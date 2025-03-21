@@ -1,0 +1,4 @@
+
+{{ .Chart.Name }} installation successful, please wait until cluster provisioning is finished.
+
+View the Docs -> {{ .Chart.Home }}

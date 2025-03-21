@@ -1,0 +1,128 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:line-length
+# yamllint disable rule:braces
+
+{{- if eq .Values.cloudprovider "openstack" }}
+{{- range $index, $nodepool := .Values.nodepools }}
+---
+apiVersion: rke-machine-config.cattle.io/v1
+kind: OpenstackConfig
+metadata:
+  name: "{{ $.Values.cluster.name }}-{{ $nodepool.name }}"
+  namespace: {{ $.Release.Namespace }}
+
+activeTimeout: "{{ $nodepool.openstackconfig.activeTimeout | default "200" }}"
+
+{{- if lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials }}
+{{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId }}
+applicationCredentialId: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId | b64dec }}
+{{- end }}
+{{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName }}
+applicationCredentialName: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName | b64dec }}
+{{- end }}
+{{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret }}
+applicationCredentialSecret: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret | b64dec }}
+{{- end }}
+{{- end }}
+
+authUrl: {{ $nodepool.openstackconfig.authUrl }}
+{{- if $nodepool.openstackconfig.availabilityZone }}
+availabilityZone: {{ $nodepool.openstackconfig.availabilityZone }}
+{{- end }}
+{{- if $nodepool.openstackconfig.bootFromVolume }}
+bootFromVolume: {{ $nodepool.openstackconfig.bootFromVolume }}
+{{- end }}
+{{- if $nodepool.openstackconfig.cacert }}
+cacert: {{ $nodepool.openstackconfig.cacert }}
+{{- end }}
+{{- if $nodepool.openstackconfig.configDrive }}
+configDrive: {{ $nodepool.openstackconfig.configDrive }}
+{{- end }}
+{{- if $nodepool.openstackconfig.domainId }}
+domainId: {{ $nodepool.openstackconfig.domainId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.domainName }}
+domainName: {{ $nodepool.openstackconfig.domainName | default "default" }}
+{{- end }}
+{{- if $nodepool.openstackconfig.endpointType }}
+endpointType: {{ $nodepool.openstackconfig.endpointType }}
+{{- end }}
+{{- if $nodepool.openstackconfig.flavorId }}
+flavorId: {{ $nodepool.openstackconfig.flavorId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.flavorName }}
+flavorName: {{ $nodepool.openstackconfig.flavorName }}
+{{- end }}
+{{- if  $nodepool.openstackconfig.floatingipPool }}
+floatingipPool: {{ $nodepool.openstackconfig.floatingipPool }}
+{{- end }}
+{{- if $nodepool.openstackconfig.imageId }}
+imageId: {{ $nodepool.openstackconfig.imageId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.imageName }}
+imageName: {{ $nodepool.openstackconfig.imageName }}
+{{- end }}
+{{- if $nodepool.openstackconfig.insecure }}
+insecure: {{ $nodepool.openstackconfig.insecure }}
+{{- end }}
+ipVersion: "{{ $nodepool.openstackconfig.ipVersion | default "4" }}"
+keypairName: {{ $nodepool.openstackconfig.keypairName }}
+{{- if  $nodepool.openstackconfig.netId }}
+netId: {{ $nodepool.openstackconfig.netId }}
+{{- end }}
+{{- if  $nodepool.openstackconfig.netName }}
+netName: {{ $nodepool.openstackconfig.netName }}
+{{- end }}
+novaNetwork: {{ $nodepool.openstackconfig.novaNetwork | default false}}
+{{ if lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretprivateKeyFile }}
+privateKeyFile: | {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretprivateKeyFile).data.privateKeyFile | b64dec | nindent 4 }}
+{{- end }}
+region: {{ $nodepool.openstackconfig.region | default "RegionOne" }}
+secGroups: {{ $nodepool.openstackconfig.secGroups | default "default" }}
+sshPort: "{{ $nodepool.openstackconfig.sshPort | default "22" }}"
+sshUser: {{ $nodepool.openstackconfig.sshUser | default "ubuntu" }}
+{{- if $nodepool.openstackconfig.tenantDomainId }}
+tenantDomainId: {{ $nodepool.openstackconfig.tenantDomainId  }}
+{{- end }}
+{{- if $nodepool.openstackconfig.tenantDomainName }}
+tenantDomainName: {{ $nodepool.openstackconfig.tenantDomainName }}
+{{- end }}
+{{- if $nodepool.openstackconfig.tenantId }}
+tenantId: {{ $nodepool.openstackconfig.tenantId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.tenantName }}
+tenantName: {{ $nodepool.openstackconfig.tenantName }}
+{{- end }}
+{{- if $nodepool.openstackconfig.userDataFile }}
+userDataFile: | {{ $nodepool.openstackconfig.userDataFile | nindent 4 }}
+{{- end }}
+{{- if $nodepool.openstackconfig.userDomainId }}
+userDomainId: {{ $nodepool.openstackconfig.userDomainId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.userDomainName }}
+userDomainName: {{ $nodepool.openstackconfig.userDomainName }}
+{{- end }}
+{{- if $nodepool.openstackconfig.userId }}
+userId: {{ $nodepool.openstackconfig.userId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.username }}
+username: {{ $nodepool.openstackconfig.username }}
+{{- end }}
+{{- if $nodepool.openstackconfig.volumeDevicePath }}
+volumeDevicePath: {{ $nodepool.openstackconfig.volumeDevicePath }}
+{{- end }}
+{{- if $nodepool.openstackconfig.volumeId }}
+volumeId: {{ $nodepool.openstackconfig.volumeId }}
+{{- end }}
+{{- if $nodepool.openstackconfig.volumeName }}
+volumeName: {{ $nodepool.openstackconfig.volumeName }}
+{{- end }}
+{{- if $nodepool.openstackconfig.volumeSize }}
+volumeSize: "{{ $nodepool.openstackconfig.volumeSize }}"
+{{- end }}
+{{- if $nodepool.openstackconfig.volumeType }}
+volumeType: {{ $nodepool.openstackconfig.volumeType }}
+{{- end }}
+
+{{- end }}
+{{- end }}

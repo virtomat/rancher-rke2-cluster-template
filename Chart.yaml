@@ -1,0 +1,20 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:line-length
+
+apiVersion: v2
+name: rke2-cluster-templates
+description: Cluster template for rke2
+version: 2.0.1
+kubeVersion: '>=v1.26.0'
+type: application
+home: https://jugit.fz-juelich.de/iek-10/public/ict-platform/deployment/kubernetes/helm-charts
+sources:
+  - https://artifacthub.io/packages/helm/rancher-cluster-templates/rancher-cluster-templates
+  - https://github.com/rancher/cluster-template-examples/tree/main
+maintainers:
+  - name: Marcel Schröder
+    email: m.schroeder@fz-juelich.de
+icon: https://www.fz-juelich.de/icon.svg
+annotations:
+  catalog.cattle.io/type: cluster-template
+  catalog.cattle.io/namespace: fleet-default

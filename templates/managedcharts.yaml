@@ -1,0 +1,166 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:braces
+
+{{- if .Values.addons.monitoring }}
+{{- if eq .Values.addons.monitoring.enabled true }}
+---
+apiVersion: management.cattle.io/v3
+kind: ManagedChart
+metadata:
+  name: monitoring-crd-{{ .Values.cluster.name }}
+  namespace: fleet-default
+spec:
+  chart: "rancher-monitoring-crd"
+  repoName: "rancher-charts"
+  releaseName: "rancher-monitoring-crd"
+  version: {{ .Values.addons.monitoring.version }}
+  {{- if .Values.addons.monitoring.values }}
+  values:
+    {{ toYaml .Values.addons.monitoring.values }}
+  {{- end }}
+  defaultNamespace: "cattle-monitoring-system"
+  targets:
+  - clusterName: {{ .Values.cluster.name }}
+---
+apiVersion: management.cattle.io/v3
+kind: ManagedChart
+metadata:
+  name: monitoring-{{ .Values.cluster.name }}
+  namespace: fleet-default
+spec:
+  chart: "rancher-monitoring"
+  repoName: "rancher-charts"
+  releaseName: "rancher-monitoring"
+  version: {{ .Values.addons.monitoring.version }}
+  {{- if .Values.addons.monitoring.values }}
+  values:
+    {{ toYaml .Values.addons.monitoring.values }}
+  {{- end }}
+  defaultNamespace: "cattle-monitoring-system"
+  targets:
+    - clusterName: {{ .Values.cluster.name }}
+  diff:
+    comparePatches:
+      - apiVersion: admissionregistration.k8s.io/v1beta1
+        kind: MutatingWebhookConfiguration
+        name: rancher-monitoring-admission
+        jsonPointers:
+          - /webhooks/0/failurePolicy
+      - apiVersion: admissionregistration.k8s.io/v1beta1
+        kind: ValidatingWebhookConfiguration
+        name: rancher-monitoring-admission
+        jsonPointers:
+        - /webhooks/0/failurePolicy
+      - apiVersion: monitoring.coreos.com/v1
+        kind: ServiceMonitor
+        name: rancher-monitoring-kubelet
+        namespace: kube-system
+        jsonPointers:
+        - /spec/endpoints
+{{- end }}
+{{- end }}
+
+{{- if .Values.addons.longhorn }}
+{{- if eq .Values.addons.longhorn.enabled true }}
+---
+apiVersion: management.cattle.io/v3
+kind: ManagedChart
+metadata:
+  name: longhorn-crd-{{ .Values.cluster.name }}
+  namespace: fleet-default
+spec:
+  chart: "longhorn-crd"
+  repoName: "rancher-charts"
+  releaseName: "longhorn-crd"
+  version: {{ .Values.addons.longhorn.version }}
+  {{- if .Values.addons.longhorn.values }}
+  values:
+    {{ toYaml .Values.addons.longhorn.values }}
+  {{- end }}
+  defaultNamespace: "longhorn-system"
+  targets:
+    - clusterName: {{ .Values.cluster.name }}
+  diff:
+    comparePatches:
+      - apiVersion: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: engineimages.longhorn.io
+        jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+      - apiVersion: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: nodes.longhorn.io
+        jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+      - apiVersion: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: volumes.longhorn.io
+        jsonPointers:
+          - /status/acceptedNames
+          - /status/conditions
+          - /status/storedVersions
+---
+apiVersion: management.cattle.io/v3
+kind: ManagedChart
+metadata:
+  name: longhorn-{{ .Values.cluster.name }}
+  namespace: fleet-default
+spec:
+  chart: "longhorn"
+  repoName: "rancher-charts"
+  releaseName: "longhorn"
+  version: {{ .Values.addons.longhorn.version }}
+  {{- if .Values.addons.longhorn.values }}
+  values:
+    {{ toYaml .Values.addons.longhorn.values }}
+  {{- end }}
+  defaultNamespace: "longhorn-system"
+  targets:
+    - clusterName: {{ .Values.cluster.name }}
+---
+{{- end }}
+{{- end }}
+
+{{- if .Values.addons.neuvector }}
+{{- if eq .Values.addons.neuvector.enabled true }}
+apiVersion: management.cattle.io/v3
+kind: ManagedChart
+metadata:
+  name: neuvector-crd-{{ .Values.cluster.name }}
+  namespace: fleet-default
+spec:
+  chart: "neuvector-crd"
+  repoName: "rancher-charts"
+  releaseName: "neuvector-crd"
+  version: {{ .Values.addons.neuvector.version }}
+  {{- if .Values.addons.neuvector.values }}
+  values:
+    {{ toYaml .Values.addons.neuvector.values }}
+  {{- end }}
+  defaultNamespace: "cattle-neuvector-system"
+  targets:
+    - clusterName: {{ .Values.cluster.name }}
+---
+apiVersion: management.cattle.io/v3
+kind: ManagedChart
+metadata:
+  name: neuvector-{{ .Values.cluster.name }}
+  namespace: fleet-default
+spec:
+  chart: "neuvector"
+  repoName: "rancher-charts"
+  releaseName: "neuvector"
+  version: {{ .Values.addons.neuvector.version }}
+  {{- if .Values.addons.neuvector.values }}
+  values:
+    {{ toYaml .Values.addons.neuvector.values }}
+  {{- end }}
+  defaultNamespace: "cattle-neuvector-system"
+  targets:
+    - clusterName: {{ .Values.cluster.name }}
+{{- end }}
+{{- end }}

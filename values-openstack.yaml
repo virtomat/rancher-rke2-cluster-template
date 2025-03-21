@@ -1,0 +1,311 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:line-length
+
+
+# Cloud Init definition
+# https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+x-cloudinit: &userDataFile |
+  #cloud-config
+  # package_update: true
+  # package_upgrade: true
+  cloud_config_modules:
+    - runcmd
+  runcmd:
+    - |
+      echo "Hello World!"
+  output: {all: '| tee -a /var/log/cloud-init-output.log'}
+
+x-openstackconfig: &openstackconfig
+  # Must contain applicationCredentialId or applicationCredentialName and applicationCredentialSecret
+  secretApplicationCredentials: openstack-application-credentials
+  # Must contain privateKeyFile
+  secretprivateKeyFile: openstack-privatekey
+  # activeTimeout:  # Default 200
+  authUrl: https://example.com:5000/v3
+  # availabilityZone:
+  # bootFromVolume: # Default: false
+  # cacert:
+  # configDrive:  # Default: false
+  # domainId:
+  # domainName:
+  # endpointType: # (adminURL, internalURL or publicURL)
+  # flavorId:
+  flavorName: ""
+  # floatingipPool:
+  # imageId:
+  imageName: ""
+  # insecure: # Default: false
+  # ipVersion:  # Default: 4
+  keypairName: ""
+  # netId:
+  netName: ""
+  # novaNetwork: # Default: false
+  region: ""
+  secGroups: "" # Comma separated list (no spaces before and after)
+  # sshPort:  # Default: 22
+  # sshUser:  # Default: ubuntu
+  # tenantDomainId:
+  # tenantDomainName:
+  # tenantId:
+  # tenantName:
+  userDataFile: *userDataFile
+  # userDomainId:
+  # userDomainName:
+  # userId:
+  # username:
+  # volumeDevicePath:
+  # volumeId:
+  # volumeName:
+  # volumeSize:
+  # volumeType:
+
+
+x-additionalManifests: &additionalManifests |
+  # Add Manifests that should additionally be deployed on the nodes/cluster
+
+
+# openstack, custom
+cloudprovider: openstack
+
+
+# cluster values
+cluster:
+  name: test-cluster
+  # labels:
+  #   key: value
+  # annotations:
+  #   key: value
+  # description: ""
+  config:
+    # agentEnvs: {}
+
+    # Specify cloud credential secret name by it's ID, doesn't need to be provided if using custom driver
+    # When using Username for authentication, the password has to be in the `cloudCredentialSecretName` key/value.
+    # Otherwise it's content doesn't matter
+    cloudCredentialSecretName: ""
+
+    # defaultClusterRoleForProjectMembers:
+    # defaultPodSecurityAdmissionConfigurationTemplateName:
+    # defaultPodSecurityPolicyTemplateName:
+    # enableNetworkPolicy:  # Default: false
+
+    kubernetesVersion: "v1.30.5+rke2r1"
+
+    # enable local auth endpoint
+    localClusterAuthEndpoint:
+      enabled: false
+
+    additionalManifests: *additionalManifests
+    # chartValues: {}
+
+
+    etcd:
+      disableSnapshots: false
+      snapshotRetention: 5
+      snapshotScheduleCron: 0 */5 * * *
+      # s3:
+      #   bucket:
+      #   # endpoint: ""
+      #   # endpointCA:""
+      #   # folder: ""
+      #   # region: ""
+      #   # skipSSLVerify: false
+      #   # cloudCredentialName:  # Specify cloud credential secret name by it's ID
+      #   # cloudCredentialName: cattle-global-data:cc...
+
+
+    machineGlobalConfig:
+      # Configure audit-policy-file
+      # More informaiton: https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/enable-api-audit-log-in-downstream-clusters
+      # audit_policy_file: |
+      #   apiVersion: audit.k8s.io/v1
+      #   kind: Policy
+      #   rules:
+      #     - level: RequestResponse
+      #       resources:
+      #         - group: ""
+      #           resources:
+      #             - pods
+
+      # CNI plugins: Canal, Cilium, Calico and Flannel
+      cni: calico
+
+      # Do not deploy packaged components and delete any deployed components (valid items: rke2-coredns, rke2-ingress-nginx, rke2-kube-proxy, rke2-metrics-server)
+      # disable:
+      #   - rke2-coredns
+      #   - rke2-ingress-nginx
+      #   - rke2-metrics-server
+
+      # disable_scheduler:  # Default: false
+      # disable_cloud_controller: true  # Default: false
+      # disable_kube_proxy: false # Default: false
+      # etcd_expose_metrics: false  # Default: false
+      # profile: "" # Validate system configuration against the selected benchmark (valid items: cis-1.5, cis-1.6 )
+      # selinux: false
+      # tls-san:
+      #   - url
+      #   - ip
+      # token: ""
+      # systemDefaultRegistry:  # Default: docker.io
+      # secrets_encryption: # Default: false
+      # write_kubeconfig_mode:  # Default: 600, doesn't work / reflected in CLuster config but not deployed on server
+      # use_service_account_credentials:  # Default: false
+      # protect_kernel_defaults:  # Default: false
+      # cloud_provider_name: "" # https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/kubernetes-clusters-in-rancher-setup/set-up-cloud-providers
+      # cloud_provider_config: "" # cloud provider config secret here (example: secret://fleet-default:cloudprovider)
+      # kube_controller_manager_arg:
+      #   - kube controller manager arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager)
+      # kube_scheduler_arg:
+      #   - kube scheduler arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kube-scheduler)
+      # kube_apiserver_arg:
+      #   - kube apiserver arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver)
+      # kubelet_proxy_arg:
+      #   - kube proxy arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy)
+      # kubelet_arg:
+      # - kubelet arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet)
+
+    machineSelectorConfig: {}
+      # kubelet_arg:
+      #   - cloud-provider=external
+
+    # controlplane/etcd configuration settings
+    # controlPlaneConfig:
+
+
+    # worker configuration settings
+    # workerConfig:
+
+    # registries:
+    #   enabled: false
+    #   # configs:
+    #   #  - name: registry.example.com
+    #   #    authConfigSecretName: registry-creds
+    #   #    caBundle: ''
+    #   #    insecureSkipVerify: false
+    #   #    tlsSecretName: ''
+    #   # mirrors:
+    #   #   - name: docker.io
+    #   #     endpoints: ['registry.example.com']
+    #   # rewrite:
+    #   #    "^rancher/(.*)": "mirrorproject/rancher-images/$1"
+    # upgradeStrategy:
+    #   controlPlaneConcurrency: 1
+    #   controlPlaneDrainOptions:
+    #     enabled: false
+    #     # deleteEmptyDirData: true
+    #     # disableEviction: false
+    #     # force: false
+    #     # gracePeriod: -1
+    #     # ignoreDaemonSets: true
+    #     # ignoreErrors: false
+    #     # skipWaitForDeleteTimeoutSeconds: 0
+    #     # timeout: 120
+    #   workerConcurrency: 1
+    #   workerDrainOptions:
+    #     enabled: false
+    #     # deleteEmptyDirData: true
+    #     # disableEviction: false
+    #     # force: false
+    #     # gracePeriod: -1
+    #     # ignoreDaemonSets: true
+    #     # ignoreErrors: false
+    #     # skipWaitForDeleteTimeoutSeconds: 0
+    #     # timeout: 120
+
+
+nodepools:
+  - name: pool
+    # displayName:  # Default: $nodepool.name
+    quantity: 1
+    etcdRole: true
+    controlPlaneRole: true
+    workerRole: true
+
+    labels: {}
+    # taints:
+    #   - effect: value
+    #     key: value
+    #     value: value
+
+    openstackconfig: *openstackconfig
+
+    # drainBeforeDelete:
+    # drainBeforeDeleteTimeout:
+    # machineDeploymentLabels:
+    # machineDeploymentAnnotations:
+    # paused: # Default: false
+    # rollingUpdate:
+    #   maxUnavailable:
+    #   maxSurge:
+    # unhealthyNodeTimeout:
+
+  # - name: control-plane-nodes
+  #   # displayName: cp-nodes
+  #   quantity: 3
+  #   etcdRole: true
+  #   controlPlaneRole: true
+  #   workerRole: false
+  #   # labels:
+  #   #   key: value
+  #   # taints:
+  #   #   effect: value
+  #   #   key: value
+  #   #   value: value
+  #   # paused: false
+  #   # drainBeforeDelete: true
+  #   # drainBeforeDeleteTimeout: 30s
+  #   # unhealthyNodeTimeout: 60s
+  #   # machineDeploymentLabels:
+  #   #   key: value
+  #   # machineDeploymentAnnotations:
+  #   #   key: value
+  #   # rollingUpdate:
+  #   #   maxUnavailable: 1
+  #   #   maxSurge: 1
+  #   # cloud provider values here
+
+  # - name: worker-nodes
+  #   # displayName: wk-nodes
+  #   quantity: 3
+  #   etcdRole: false
+  #   controlPlaneRole: false
+  #   workerRole: true
+  #   # labels:
+  #   #   key: value
+  #   # taints:
+  #   #   effect: value
+  #   #   key: value
+  #   #   value: value
+  #   # paused: false
+  #   # drainBeforeDelete: true
+  #   # drainBeforeDeleteTimeout: 30s
+  #   # unhealthyNodeTimeout: 60s
+  #   # machineDeploymentLabels:
+  #   #   key: value
+  #   # machineDeploymentAnnotations:
+  #   #   key: value
+  #   # rollingUpdate:
+  #   #   maxUnavailable: 1
+  #   #   maxSurge: 1
+  #   # cloud provider values here
+
+
+# addons values
+addons:
+  monitoring:
+    enabled: false
+    # version: 103.0.4+up45.31.1
+    # values:
+    #   values here
+
+  longhorn:
+    enabled: false
+    # version: 103.2.2+up1.5.4
+    # values:
+    #   values here
+
+  neuvector:
+    enabled: false
+    # version: 103.0.2+up2.7.3
+    # values:
+    #   values here
