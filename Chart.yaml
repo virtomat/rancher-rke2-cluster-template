@@ -4,7 +4,7 @@
 apiVersion: v2
 name: rke2-cluster-templates
 description: Cluster template for rke2
-version: 2.0.1
+version: 1.0.0
 kubeVersion: '>=v1.26.0'
 type: application
 home: https://docs.virtomat.net
