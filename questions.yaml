@@ -6,20 +6,13 @@
 questions:
   # general
   - variable: cloudprovider
-    default: custom
+    default: openstack
     description: 'Specify Infrastructure provider for underlying nodes'
     label: 'Infrastructure Provider'
     type: enum
     required: true
     options:
       - openstack
-      # - amazonec2
-      # - azure
-      # - digitalocean
-      # - elemental
-      # - harvester
-      # - vsphere
-      - custom
     group: 'General'
   - variable: cluster.name
     default: mycluster
@@ -41,7 +34,7 @@ questions:
   - variable: cluster.description
     label: 'description'
     type: string
-    description: 'Cluster annotations'
+    description: 'Cluster Description'
     group: 'General'
   - variable: cluster.config.agentEnvs
     label: 'agentEnvs'
@@ -361,7 +354,7 @@ questions:
     show_if: cloudprovider=openstack
     group: 'Nodepools'
   - variable: nodepools.0.openstackconfig.ipVersion
-    label: 'imageName'
+    label: 'ipVersion'
     default: '4'
     type: string
     description: 'OpenStack version of IP address assigned for the machine'
