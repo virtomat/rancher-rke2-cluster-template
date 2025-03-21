@@ -7,14 +7,14 @@ description: Cluster template for rke2
 version: 2.0.1
 kubeVersion: '>=v1.26.0'
 type: application
-home: https://jugit.fz-juelich.de/iek-10/public/ict-platform/deployment/kubernetes/helm-charts
+home: https://docs.virtomat.net
 sources:
-  - https://artifacthub.io/packages/helm/rancher-cluster-templates/rancher-cluster-templates
+  - https://github.com/virtomat/rancher-rke2-cluster-template.git
   - https://github.com/rancher/cluster-template-examples/tree/main
 maintainers:
-  - name: Marcel Schröder
-    email: m.schroeder@fz-juelich.de
-icon: https://www.fz-juelich.de/icon.svg
+  - name: Radu Moisan
+    email: radu@virtomat.io
+icon: https://github.com/virtomat/rancher-rke2-cluster-template/blob/3abbcf6749c82cc8284899c764b79bfc31fca9df/virtomat.png
 annotations:
   catalog.cattle.io/type: cluster-template
   catalog.cattle.io/namespace: fleet-default
