@@ -3,7 +3,7 @@
 
 apiVersion: v2
 name: rke2-cluster-templates
-description: Cluster template for rke2
+description: Virtomat Openstack RKE2 Cluster Template
 version: 1.0.0
 kubeVersion: '>=v1.26.0'
 type: application
