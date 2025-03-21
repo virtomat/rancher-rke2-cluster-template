@@ -9,10 +9,8 @@ questions:
     default: openstack
     description: 'Specify Infrastructure provider for underlying nodes'
     label: 'Infrastructure Provider'
-    type: enum
+    type: string
     required: true
-    options:
-      - openstack
     group: 'General'
   - variable: cluster.name
     default: mycluster

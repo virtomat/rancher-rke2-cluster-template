@@ -4,9 +4,7 @@
 # x-additionalManifests: &additionalManifests |
 #   # Add Manifests that should additionally be deployed on the nodes/cluster
 
-
-# openstack, custom
-cloudprovider:
+cloudprovider: openstack
 
 
 # cluster values
