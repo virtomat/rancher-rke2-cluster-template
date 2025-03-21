@@ -4,6 +4,9 @@
 # x-additionalManifests: &additionalManifests |
 #   # Add Manifests that should additionally be deployed on the nodes/cluster
 
+# Beginner or Advanced
+configMode: Beginner
+
 cloudprovider: openstack
 
 
