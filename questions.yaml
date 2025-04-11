@@ -135,12 +135,14 @@ questions:
   # registries
   - variable: cluster.config.registries.configs # list
     group: 'Cluster Registries'
+    show_if: configMode=Advanced
     # authConfigSecretName
     # caBundle
     # insecureSkipVerify
     # tlsSecretName
   - variable: cluster.config.registries.mirrors # list
     group: 'Cluster Registries'
+    show_if: configMode=Advanced
     # endpoints
     # rewrite # dict list
 
