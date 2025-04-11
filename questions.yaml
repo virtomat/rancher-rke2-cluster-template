@@ -398,6 +398,7 @@ questions:
   - variable: nodepools.0.openstackconfig.flavorName
     description: 'OpenStack flavor name to use for the instance'
     label: 'flavorName'
+    default: 'm1.medium'
     type: enum
     options:
       - m1.medium
