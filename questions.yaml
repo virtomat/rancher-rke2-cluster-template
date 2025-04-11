@@ -4,7 +4,9 @@
 # https://github.com/rancher/questions-yml-examples
 
 questions:
-  # general
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: General ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   - variable: configMode
     default: Beginner
     description: 'Wizzard Configuration Mode'
@@ -12,8 +14,8 @@ questions:
     type: enum
     required: true
     options:
-      - Beginner
-      - Expert
+      - Simple
+      - Advanced
     group: 'General'
   - variable: cloudprovider
     default: openstack
@@ -22,7 +24,7 @@ questions:
     type: string
     required: true
     group: 'General'
-    show_if: configMode=Expert
+    show_if: configMode=Advanced
   - variable: cluster.name
     default: mycluster
     description: 'Specify the name of the cluster'
@@ -40,6 +42,7 @@ questions:
     type: annotations
     description: 'Cluster annotations'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.description
     label: 'description'
     type: string
@@ -50,33 +53,39 @@ questions:
     type: string
     description: 'Cluster agentEnvs'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.cloudCredentialSecretName
-    default:
+    default: cc-openstack-generic
     description: 'CloudCredentialName for provisioning cluster'
     label: 'CloudCredential Name'
     type: cloudcredential
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.defaultClusterRoleForProjectMembers
     label: 'defaultClusterRoleForProjectMembers'
     type: string
     description: 'Default cluster role for project members'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.defaultPodSecurityAdmissionConfigurationTemplateName
     label: 'defaultPodSecurityAdmissionConfigurationTemplateName'
     type: string
     description: 'Default pod security admission configuration template name'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.defaultPodSecurityPolicyTemplateName
     label: 'defaultPodSecurityPolicyTemplateName'
     type: string
     description: 'Default pod security policy template name'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.enableNetworkPolicy
+    description: 'Enable network policy'
     label: 'enableNetworkPolicy'
     default: false
     type: boolean
-    description: 'Enable network policy'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.kubernetesVersion
     default: v1.30.4+rke2r1
     description: 'Specify Kubernetes Version'
@@ -90,12 +99,18 @@ questions:
       - v1.29.8+rke2r1
       - v1.30.4+rke2r1
     group: 'General'
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: Auth Access Endpoint ~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
   - variable: cluster.config.localClusterAuthEndpoint.enabled
-    default: false
-    label: 'Local Auth Access Endpoint'
     description: 'Enable Local Auth Access Endpoint'
+    label: 'Local Auth Access Endpoint'
+    default: false
     type: boolean
     group: 'Auth Access Endpoint'
+    show_if: configMode=Advanced
     show_subquestion_if: true
     subquestions:
       - variable: localClusterAuthEndpoint.fqdn
@@ -111,45 +126,60 @@ questions:
         type: multiline
         group: 'Auth Access Endpoint'
 
-  # rke config
-
-  # machine selector config
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: Cluster Config ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   # registries
   - variable: cluster.config.registries.enabled
-  - variable: cluster.config.registries.configs # list
-    # authConfigSecretName
-    # caBundle
-    # insecureSkipVerify
-    # tlsSecretName
-  - variable: cluster.config.registries.mirrors # list
-    # endpoints
-    # rewrite # dict list
+    default: false
+    type: boolean
+    group: 'Cluster Config'
+    show_if: configMode=Advanced
+    show_subquestion_if: true
+    subquestions:
+      - variable: registries.configs # list
+        group: 'Cluster Config'
+        # authConfigSecretName
+        # caBundle
+        # insecureSkipVerify
+        # tlsSecretName
+      - variable: registries.mirrors # list
+        group: 'Cluster Config'
+        # endpoints
+        # rewrite # dict list
 
   # upgrade strategy
-  - variable: cluster.config.upgradeStrategy
-  - variable: cluster.config.upgradeStrategy.controlPlaneConcurrency
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.enabled
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.deleteEmptyDirData
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.disableEviction
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.force
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.gracePeriod
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.ignoreDaemonSets
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.ignoreErrors
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.skipWaitForDeleteTimeoutSeconds
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.timeout
-  - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.enabled
-  - variable: cluster.config.upgradeStrategy.workerConcurrency
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.enabled
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.deleteEmptyDirData
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.disableEviction
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.force
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.gracePeriod
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.ignoreDaemonSets
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.ignoreErrors
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.skipWaitForDeleteTimeoutSeconds
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.timeout
-  - variable: cluster.config.upgradeStrategy.workerDrainOptions.enabled
+  - variable: cluster.config.upgradeStrategy.enabled
+    default: false
+    type: boolean
+    group: 'Upgrade Strategy'
+    show_if: configMode=Advanced
+    show_subquestion_if: true
+    subquestions:
+      - variable: cluster.config.upgradeStrategy
+      - variable: cluster.config.upgradeStrategy.controlPlaneConcurrency
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.enabled
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.deleteEmptyDirData
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.disableEviction
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.force
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.gracePeriod
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.ignoreDaemonSets
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.ignoreErrors
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.skipWaitForDeleteTimeoutSeconds
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.timeout
+      - variable: cluster.config.upgradeStrategy.controlPlaneDrainOptions.enabled
+      - variable: cluster.config.upgradeStrategy.workerConcurrency
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.enabled
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.deleteEmptyDirData
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.disableEviction
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.force
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.gracePeriod
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.ignoreDaemonSets
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.ignoreErrors
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.skipWaitForDeleteTimeoutSeconds
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.timeout
+      - variable: cluster.config.upgradeStrategy.workerDrainOptions.enabled
 
   # addons
   - variable: addons.monitoring.enabled
