@@ -298,7 +298,7 @@ questions:
     type: string
     label: 'Nodepool name'
     required: true
-    show_if: "(configMode=Simple || configMode=Advanced) && nodePoolTemplate=SinglePool"
+    show_if: "nodePoolTemplate=SinglePool"
     group: 'Nodepool Generic'
   - variable: nodepools.0.quantity
     description: 'Specify node count'
@@ -306,7 +306,7 @@ questions:
     type: int
     default: '1'
     required: true
-    show_if: "(configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool"
+    show_if: "nodePoolTemplate=SinglePool"
     group: 'Nodepool Generic'
   - variable: nodepools.0.etcd
     default: 'true'
@@ -379,7 +379,7 @@ questions:
     type: string
     required: true
     description: 'Secret containing applicationCredentialId/applicationCredentialName and applicationCredentialSecret'
-    show_if: "(configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool"
+    show_if: "nodePoolTemplate=SinglePool"
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.authUrl
     description: 'OpenStack authentication URL'
@@ -401,7 +401,7 @@ questions:
     type: enum
     options:
       - m1.medium
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.floatingipPool
     description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
@@ -421,7 +421,7 @@ questions:
     label: 'imageName'
     type: string
     default: 'ubuntu-22.04'
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.netId
     description: 'OpenStack network id the machine will be connected on'
@@ -434,14 +434,14 @@ questions:
     label: 'netName'
     type: string
     default: 'local-net'
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.keypairName
     description: 'OpenStack keypair to use to SSH to the instance'
     label: 'keypairName'
     type: string
     required: true
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.region
     description: 'OpenStack region name'
@@ -449,7 +449,7 @@ questions:
     default: RegionOne
     type: string
     required: true
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.secretprivateKeyFile
     description: 'File contents for privateKeyFile '
@@ -457,14 +457,14 @@ questions:
     type: string
     default: 'openstack-privatekey'
     required: true
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.secGroups
     description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
     label: 'secGroups'
     type: string
     default: 'default'
-    show_if: (configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool
+    show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
   - variable: nodepools.0.openstackconfig.availabilityZone
     description: 'OpenStack availability zone'
