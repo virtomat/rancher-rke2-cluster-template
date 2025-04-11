@@ -298,7 +298,7 @@ questions:
     type: string
     label: 'Nodepool name'
     required: true
-    show_if: "(configMode=Advanced || configMode=Simple) && nodePoolTemplate=SinglePool"
+    show_if: "(configMode=Simple || configMode=Advanced) && nodePoolTemplate=SinglePool"
     group: 'Nodepool Generic'
   - variable: nodepools.0.quantity
     description: 'Specify node count'
