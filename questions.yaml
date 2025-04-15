@@ -456,7 +456,7 @@ questions:
     description: 'File contents for privateKeyFile '
     label: 'secretprivateKeyFile'
     type: string
-    default: 'openstack-privatekey'
+#    default: 'openstack-privatekey'
     required: true
     show_if: nodePoolTemplate=SinglePool
     group: 'Nodepool Openstack'
