@@ -57,10 +57,11 @@ questions:
     group: 'General'
     show_if: configMode=Advanced
   - variable: cluster.config.cloudCredentialSecretName
-#    default: cc-openstack-generic
+    default: cc-openstack-generic
     description: 'CloudCredentialName for provisioning cluster'
     label: 'CloudCredential Name'
-    type: cloudcredential
+#    type: cloudcredential
+    type: string
     group: 'General'
     show_if: configMode=Advanced
   - variable: cluster.config.defaultClusterRoleForProjectMembers
