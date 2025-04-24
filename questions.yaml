@@ -64,6 +64,18 @@ questions:
     type: string
     group: 'General'
     show_if: configMode=Advanced
+  - variable: cluster.config.openstack.applicationCredentialId
+    label: 'applicationCredentialId'
+    type: string
+    required: true
+    description: 'ID value from the Openstack Application Credential'
+    group: 'General'
+  - variable: cluster.config.openstack.applicationCredentialSecret
+    label: 'applicationCredentialSecret'
+    type: string
+    required: true
+    description: 'Secret value from the Openstack Application Credential'
+    group: 'General'
   - variable: cluster.config.defaultClusterRoleForProjectMembers
     label: 'defaultClusterRoleForProjectMembers'
     type: string
@@ -294,108 +306,38 @@ questions:
 
   # machinePool
   - variable: nodepools.0.name
-    default:
+    default: 'master'
     description: 'Specify nodepool name'
     type: string
-    label: 'Nodepool name'
+    label: 'Nodepool Name'
     required: true
-    show_if: "nodePoolTemplate=SinglePool"
-    group: 'Nodepool Generic'
+    show_if: configMode=Advanced
+    group: 'Master Nodepool'
   - variable: nodepools.0.quantity
     description: 'Specify node count'
     label: 'Node count'
     type: int
     default: '1'
     required: true
-    show_if: "nodePoolTemplate=SinglePool"
-    group: 'Nodepool Generic'
+    group: 'Master Nodepool'
   - variable: nodepools.0.etcd
     default: 'true'
     label: etcd
     type: boolean
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Nodepool Generic'
+    #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
+    group: 'Master Nodepool'
   - variable: nodepools.0.controlplane
     label: controlplane
     default: 'true'
     type: boolean
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Nodepool Generic'
+    #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
+    group: 'Master Nodepool'
   - variable: nodepools.0.worker
-    default: 'true'
+    default: nodePoolTemplate=SinglePool
     label: worker
     type: boolean
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Nodepool Generic'
-
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # ~~~~~~~~~~~~~~~~~~~ Section: Nodepool Generic Extra ~~~~~~~~~~~~~~~~~~~~~~~~
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  - variable: nodepools.0.labels
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.drainBeforeDelete
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.drainBeforeDeleteTimeout
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.machineDeploymentLabels
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.machineDeploymentAnnotations
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.paused
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.rollingUpdate
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.rollingUpdate.maxUnavailable
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.rollingUpdate.maxSurge
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-  - variable: nodepools.0.unhealthyNodeTimeout
-    group: 'Nodepool Generic Extra'
-    show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # ~~~~~~~~~~~~~~~~~~~ Section: Nodepool Openstack ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  # openstack
-  - variable: nodepools.0.openstackconfig.activeTimeout
-    description: 'OpenStack active timeout'
-    label: 'activeTimeout'
-    default: '200'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.secretApplicationCredentials
-    label: 'secretApplicationCredentials'
-    type: string
-    required: true
-    description: 'Secret containing applicationCredentialId/applicationCredentialName and applicationCredentialSecret'
-    show_if: "nodePoolTemplate=SinglePool"
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.authUrl
-    description: 'OpenStack authentication URL'
-    label: 'authUrl'
-    default: 'https://cloud.virtomat.net:5000/v3'
-    type: string
-    required: true
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.flavorId
-    description: 'OpenStack flavor id to use for the instance'
-    label: 'flavorId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
+    #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
+    group: 'Master Nodepool'
   - variable: nodepools.0.openstackconfig.flavorName
     description: 'OpenStack flavor name to use for the instance'
     label: 'flavorName'
@@ -403,234 +345,318 @@ questions:
     type: enum
     options:
       - m1.medium
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.floatingipPool
-    description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
-    label: 'floatingipPool'
-    type: string
-    default: 'office'
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.imageId
-    description: 'OpenStack image id to use for the instance'
-    label: 'imageId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.imageName
-    description: 'OpenStack image name to use for the instance'
-    label: 'imageName'
-    type: string
-    default: 'ubuntu-22.04'
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.netId
-    description: 'OpenStack network id the machine will be connected on'
-    label: 'netId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.netName
-    description: 'OpenStack network name the machine will be connected on'
-    label: 'netName'
-    type: string
-    default: 'local-net'
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.keypairName
-    description: 'OpenStack keypair to use to SSH to the instance'
-    label: 'keypairName'
-    type: string
-    required: true
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.region
-    description: 'OpenStack region name'
-    label: 'region'
-    default: RegionOne
-    type: string
-    required: true
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.secretprivateKeyFile
-    description: 'File contents for privateKeyFile '
-    label: 'secretprivateKeyFile'
-    type: string
-#    default: 'openstack-privatekey'
-    required: true
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.secGroups
-    description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
-    label: 'secGroups'
-    type: string
-    default: 'default'
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.availabilityZone
-    description: 'OpenStack availability zone'
-    label: 'availabilityZone'
-    type: string
-    show_if: configMode=Advanced
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.bootFromVolume
-    description: 'Enables Openstack instance to boot from volume as ROOT'
-    label: 'bootFromVolume'
+    group: 'Master Nodepool'
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: Nodepool Generic Extra ~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  - variable: nodepools.0.extraConfigs
     default: 'false'
+    label: 'Show Master Nodes Additional Configs (Generic)'
+    description: 'Additional Configuration specific for Master Nodes'
     type: boolean
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.cacert
-    description: 'File contents for cacert'
-    label: 'cacert'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.configDrive
-    description: 'Enables the OpenStack config drive for the instance'
-    label: 'configDrive'
+    group: 'Master Nodepool Extra'
+    show_if: "configMode=Advanced"
+    show_subquestion_if: true
+    subquestions:
+      - variable: nodepools.0.labels
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.drainBeforeDelete
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.drainBeforeDeleteTimeout
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.machineDeploymentLabels
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.machineDeploymentAnnotations
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.paused
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.rollingUpdate
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.rollingUpdate.maxUnavailable
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.rollingUpdate.maxSurge
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+      - variable: nodepools.0.unhealthyNodeTimeout
+        group: 'Master Nodepool Extra'
+        show_if: "configMode=Advanced"
+  - variable: nodepools.0.openstackExtraConfigs
     default: 'false'
+    label: 'Show Master Nodes Additional Configs (Openstack)'
+    description: 'Additional Openstack Configuration specific for Master Nodes'
     type: boolean
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.domainId
-    description: 'OpenStack domain ID'
-    label: 'domainId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.domainName
-    description: 'OpenStack domain name'
-    label: 'domainName'
-    default: default
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.endpointType
-    description: 'OpenStack endpoint type (adminURL, internalURL or publicURL)'
-    label: 'endpointType'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.insecure
-    description: 'Disable TLS credential checking'
-    label: 'insecure'
-    default: 'false'
-    type: boolean
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.ipVersion
-    description: 'OpenStack version of IP address assigned for the machine'
-    label: 'ipVersion'
-    default: '4'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.novaNetwork
-    description: 'Use the nova networking services instead of neutron.'
-    label: 'novaNetwork'
-    type: boolean
-    default: 'false'
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.sshPort
-    description: 'OpenStack SSH port'
-    label: 'sshPort'
-    default: '22'
-    type: string
-    required: true
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.sshUser
-    description: 'OpenStack SSH Username for VM login'
-    label: 'sshUser'
-    default: ubuntu
-    type: string
-    required: true
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.tenantDomainId
-    label: 'tenantDomainId'
-    type: string
-    description: 'OpenStack tenant domain id'
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.tenantDomainName
-    label: 'tenantDomainName'
-    type: string
-    description: 'OpenStack tenant domain name'
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.tenantId
-    label: 'tenantId'
-    type: string
-    description: 'OpenStack tenant id'
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.tenantName
-    description: 'OpenStack tenant name'
-    label: 'tenantName'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.userDataFile
-    description: 'File contents for userDataFile'
-    label: 'userDataFile'
-    type: multiline
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.userDomainId
-    description: 'OpenStack user domain id'
-    label: 'userDomainId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.userDomainName
-    description: 'OpenStack user domain name'
-    label: 'userDomainName'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.userId
-    description: 'OpenStack user-id'
-    label: 'userId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.username
-    description: 'OpenStack username'
-    label: 'username'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.volumeDevicePath
-    description: "OpenStack volume device path (attaching); Omit for auto '/dev/vdb'"
-    label: 'volumeDevicePath'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.volumeId
-    description: 'OpenStack volume id (existing)'
-    label: 'volumeId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.volumeName
-    description: 'OpenStack volume name (creating)'
-    label: 'volumeName'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.volumeSize
-    description: 'OpenStack volume size (GiB) when creating a volume'
-    label: 'volumeSize'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
-  - variable: nodepools.0.openstackconfig.volumeType
-    description: 'OpenStack volume type (ssd, ...)'
-    label: 'volumeType'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Nodepool Openstack'
+    group: 'Master Nodepool Extra'
+    show_if: "configMode=Advanced"
+    show_subquestion_if: true
+    subquestions:
+      - variable: nodepools.0.openstackconfig.activeTimeout
+        description: 'OpenStack active timeout'
+        label: 'activeTimeout'
+        default: '200'
+        type: string
+        show_if: configMode=Advanced
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.authUrl
+        description: 'OpenStack authentication URL'
+        label: 'authUrl'
+        default: 'https://cloud.virtomat.net:5000/v3'
+        type: string
+        required: true
+        show_if: configMode=Advanced
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.flavorId
+        description: 'OpenStack flavor id to use for the instance'
+        label: 'flavorId'
+        type: string
+        show_if: configMode=Advanced
+        group: 'Master Nodepool Extra'
+
+      - variable: nodepools.0.openstackconfig.flavorName
+        description: 'OpenStack flavor name to use for the instance'
+        label: 'flavorName'
+        default: 'm1.medium'
+        type: enum
+        options:
+          - m1.medium
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+
+      - variable: nodepools.0.openstackconfig.floatingipPool
+        description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
+        label: 'floatingipPool'
+        type: string
+        default: 'office'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.imageId
+        description: 'OpenStack image id to use for the instance'
+        label: 'imageId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.imageName
+        description: 'OpenStack image name to use for the instance'
+        label: 'imageName'
+        type: string
+        default: 'ubuntu-22.04'
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.netId
+        description: 'OpenStack network id the machine will be connected on'
+        label: 'netId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.netName
+        description: 'OpenStack network name the machine will be connected on'
+        label: 'netName'
+        type: string
+        default: 'local-net'
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.keypairName
+        description: 'OpenStack keypair to use to SSH to the instance'
+        label: 'keypairName'
+        type: string
+        required: true
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.region
+        description: 'OpenStack region name'
+        label: 'region'
+        default: RegionOne
+        type: string
+        required: true
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.secretprivateKeyFile
+        description: 'File contents for privateKeyFile '
+        label: 'secretprivateKeyFile'
+        type: string
+    #    default: 'openstack-privatekey'
+        required: true
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.secGroups
+        description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
+        label: 'secGroups'
+        type: string
+        default: 'default'
+        show_if: nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.availabilityZone
+        description: 'OpenStack availability zone'
+        label: 'availabilityZone'
+        type: string
+        show_if: configMode=Advanced
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.bootFromVolume
+        description: 'Enables Openstack instance to boot from volume as ROOT'
+        label: 'bootFromVolume'
+        default: 'false'
+        type: boolean
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.cacert
+        description: 'File contents for cacert'
+        label: 'cacert'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.configDrive
+        description: 'Enables the OpenStack config drive for the instance'
+        label: 'configDrive'
+        default: 'false'
+        type: boolean
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.domainId
+        description: 'OpenStack domain ID'
+        label: 'domainId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.domainName
+        description: 'OpenStack domain name'
+        label: 'domainName'
+        default: default
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.endpointType
+        description: 'OpenStack endpoint type (adminURL, internalURL or publicURL)'
+        label: 'endpointType'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.insecure
+        description: 'Disable TLS credential checking'
+        label: 'insecure'
+        default: 'false'
+        type: boolean
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.ipVersion
+        description: 'OpenStack version of IP address assigned for the machine'
+        label: 'ipVersion'
+        default: '4'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.novaNetwork
+        description: 'Use the nova networking services instead of neutron.'
+        label: 'novaNetwork'
+        type: boolean
+        default: 'false'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.sshPort
+        description: 'OpenStack SSH port'
+        label: 'sshPort'
+        default: '22'
+        type: string
+        required: true
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.sshUser
+        description: 'OpenStack SSH Username for VM login'
+        label: 'sshUser'
+        default: ubuntu
+        type: string
+        required: true
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.tenantDomainId
+        label: 'tenantDomainId'
+        type: string
+        description: 'OpenStack tenant domain id'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.tenantDomainName
+        label: 'tenantDomainName'
+        type: string
+        description: 'OpenStack tenant domain name'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.tenantId
+        label: 'tenantId'
+        type: string
+        description: 'OpenStack tenant id'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.tenantName
+        description: 'OpenStack tenant name'
+        label: 'tenantName'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.userDataFile
+        description: 'File contents for userDataFile'
+        label: 'userDataFile'
+        type: multiline
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.userDomainId
+        description: 'OpenStack user domain id'
+        label: 'userDomainId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.userDomainName
+        description: 'OpenStack user domain name'
+        label: 'userDomainName'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.userId
+        description: 'OpenStack user-id'
+        label: 'userId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.username
+        description: 'OpenStack username'
+        label: 'username'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.volumeDevicePath
+        description: "OpenStack volume device path (attaching); Omit for auto '/dev/vdb'"
+        label: 'volumeDevicePath'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.volumeId
+        description: 'OpenStack volume id (existing)'
+        label: 'volumeId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.volumeName
+        description: 'OpenStack volume name (creating)'
+        label: 'volumeName'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.volumeSize
+        description: 'OpenStack volume size (GiB) when creating a volume'
+        label: 'volumeSize'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'
+      - variable: nodepools.0.openstackconfig.volumeType
+        description: 'OpenStack volume type (ssd, ...)'
+        label: 'volumeType'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Master Nodepool Extra'

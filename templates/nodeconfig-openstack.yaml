@@ -14,15 +14,19 @@ metadata:
 activeTimeout: "{{ $nodepool.openstackconfig.activeTimeout | default "200" }}"
 
 {{- if lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials }}
-{{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId }}
+  {{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId }}
 applicationCredentialId: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId | b64dec }}
-{{- end }}
-{{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName }}
+  {{- end }}
+  {{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName }}
 applicationCredentialName: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName | b64dec }}
-{{- end }}
-{{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret }}
+  {{- end }}
+  {{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret }}
 applicationCredentialSecret: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret | b64dec }}
-{{- end }}
+  {{- end }}
+{{- else }}
+applicationCredentialId: {{ .Values.cluster.config.openstack.applicationCredentialId }}
+applicationCredentialName: {{ .Values.cluster.config.openstack.applicationCredentialName }}
+applicationCredentialSecret: {{ .Values.cluster.config.openstack.applicationCredentialSecret }}
 {{- end }}
 
 authUrl: {{ $nodepool.openstackconfig.authUrl }}

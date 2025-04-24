@@ -26,6 +26,11 @@ cluster:
     # Otherwise it's content doesn't matter
     cloudCredentialSecretName: ""
 
+    openstack:
+      applicationCredentialName: ""
+      applicationCredentialId: ""
+      applicationCredentialSecret: ""
+
     # defaultClusterRoleForProjectMembers:
     # defaultPodSecurityAdmissionConfigurationTemplateName:
     # defaultPodSecurityPolicyTemplateName:
