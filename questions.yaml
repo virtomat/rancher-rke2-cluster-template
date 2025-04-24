@@ -333,7 +333,7 @@ questions:
     #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
     group: 'Master Nodepool'
   - variable: nodepools.0.worker
-    default: nodePoolTemplate=SinglePool
+
     label: worker
     type: boolean
     #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"

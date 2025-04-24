@@ -206,7 +206,7 @@ spec:
         etcdRole: {{ $nodepool.etcdRole }}
         controlPlaneRole: {{ $nodepool.controlPlaneRole }}
         # assumed false if index is zero (first pool is for master nodes) and true otherwise (the rest of the pools are for worker nodes)
-        workerRole: {{ ne $index 0 }}
+        workerRole: {{ or (and (eq .Values.nodePoolTemplate "MultiPool") (ne $index 0)) (eq .Values.nodePoolTemplate "SinglePool") }}
         {{- if $nodepool.labels }}
         labels:
           {{- with $nodepool.labels }}
