@@ -6,6 +6,7 @@
 
 # Simple or Advanced
 configMode: Simple
+nodePoolTemplate: SinglePool
 
 cloudprovider: openstack
 
