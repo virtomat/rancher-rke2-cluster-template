@@ -56,6 +56,14 @@ questions:
     description: 'Cluster agentEnvs'
     group: 'General'
     show_if: configMode=Advanced
+  - variable: cluster.config.openstack.authUrl
+    description: 'OpenStack authentication URL'
+    label: 'authUrl'
+    default: 'https://cloud.virtomat.net:5000/v3'
+    type: string
+    required: true
+    show_if: configMode=Advanced
+    group: 'General'
   - variable: cluster.config.cloudCredentialSecretName
     default: cc-openstack-generic
     description: 'CloudCredentialName for provisioning cluster'
@@ -64,18 +72,6 @@ questions:
     type: string
     group: 'General'
     show_if: configMode=Advanced
-  - variable: cluster.config.openstack.applicationCredentialId
-    label: 'applicationCredentialId'
-    type: string
-    required: true
-    description: 'ID value from the Openstack Application Credential'
-    group: 'General'
-  - variable: cluster.config.openstack.applicationCredentialSecret
-    label: 'applicationCredentialSecret'
-    type: string
-    required: true
-    description: 'Secret value from the Openstack Application Credential'
-    group: 'General'
   - variable: cluster.config.defaultClusterRoleForProjectMembers
     label: 'defaultClusterRoleForProjectMembers'
     type: string
@@ -114,6 +110,71 @@ questions:
       - v1.29.8+rke2r1
       - v1.30.4+rke2r1
     group: 'General'
+  - variable: cluster.config.openstack.enabled
+    description: 'Show General Openstack Configs'
+    label: 'Openstack Configuration'
+    default: 'true'
+    type: boolean
+    group: 'General'
+    show_subquestion_if: true
+    subquestions:
+      - variable: cluster.config.openstack.applicationCredentialId
+        label: 'applicationCredentialId'
+        type: string
+        required: true
+        description: 'ID value from the Openstack Application Credential'
+        group: 'General'
+      - variable: cluster.config.openstack.applicationCredentialSecret
+        label: 'applicationCredentialSecret'
+        type: string
+        required: true
+        description: 'Secret value from the Openstack Application Credential'
+        group: 'General'
+      - variable: cluster.config.openstack.defaultPrivateKey
+        description: 'File contents for privateKeyFile. It used a default private key, use your own for increased security.'
+        label: 'secretPrivateKey'
+        type: multiline
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.defaultKeypairName
+        description: "OpenStack keypair to use to SSH into node. By default 'bootstrap' is used, which is created during account registration."
+        default: bootstrap
+        label: 'keypairName'
+        type: string
+        required: true
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.region
+        description: 'OpenStack region name'
+        label: 'region'
+        default: RegionOne
+        type: string
+        required: true
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.secGroups
+        description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
+        label: 'secGroups'
+        type: string
+        default: 'default'
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.sshPort
+        description: 'OpenStack SSH port'
+        label: 'sshPort'
+        default: '22'
+        type: string
+        required: true
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.sshUser
+        description: 'OpenStack SSH Username for VM login'
+        label: 'sshUser'
+        default: ubuntu
+        type: string
+        required: true
+        show_if: configMode=Advanced
+        group: 'General'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~ Section: Auth Access Endpoint ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -122,7 +183,7 @@ questions:
   - variable: cluster.config.localClusterAuthEndpoint.enabled
     description: 'Enable Local Auth Access Endpoint'
     label: 'Local Auth Access Endpoint'
-    default: false
+    default: 'false'
     type: boolean
     group: 'Auth Access Endpoint'
     show_if: configMode=Advanced
@@ -346,6 +407,50 @@ questions:
     options:
       - m1.medium
     group: 'Master Nodepool'
+  - variable: nodepools.0.openstackconfig.flavorId
+    description: 'OpenStack flavor id to use for the instance'
+    label: 'flavorId'
+    type: string
+    show_if: configMode=Advanced
+    group: 'Master Nodepool'
+    # TODO: Move to General
+  - variable: nodepools.0.openstackconfig.floatingipPool
+    description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
+    label: 'floatingipPool'
+    type: string
+    default: 'office'
+    show_if: configMode=Advanced
+    group: 'Master Nodepool'
+    # FIXME: Could be moved to General (do we want to support different images for master/worker pools?)
+  - variable: nodepools.0.openstackconfig.imageId
+    description: 'OpenStack image id to use for the instance'
+    label: 'imageId'
+    type: string
+    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+    group: 'Master Nodepool'
+    # FIXME: Could be moved to General (do we want to support different images for master/worker pools?)
+  - variable: nodepools.0.openstackconfig.imageName
+    description: 'OpenStack image name to use for the instance'
+    label: 'imageName'
+    type: string
+    default: 'ubuntu-22.04'
+    show_if: nodePoolTemplate=SinglePool
+    group: 'Master Nodepool'
+    # TODO: Move to General
+  - variable: nodepools.0.openstackconfig.netId
+    description: 'OpenStack network id the machine will be connected on'
+    label: 'netId'
+    type: string
+    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+    group: 'Master Nodepool'
+    # TODO: Move to General
+  - variable: nodepools.0.openstackconfig.netName
+    description: 'OpenStack network name the machine will be connected on'
+    label: 'netName'
+    type: string
+    default: 'local-net'
+    show_if: nodePoolTemplate=SinglePool
+    group: 'Master Nodepool'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~ Section: Nodepool Generic Extra ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -405,94 +510,6 @@ questions:
         default: '200'
         type: string
         show_if: configMode=Advanced
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.authUrl
-        description: 'OpenStack authentication URL'
-        label: 'authUrl'
-        default: 'https://cloud.virtomat.net:5000/v3'
-        type: string
-        required: true
-        show_if: configMode=Advanced
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.flavorId
-        description: 'OpenStack flavor id to use for the instance'
-        label: 'flavorId'
-        type: string
-        show_if: configMode=Advanced
-        group: 'Master Nodepool Extra'
-
-      - variable: nodepools.0.openstackconfig.flavorName
-        description: 'OpenStack flavor name to use for the instance'
-        label: 'flavorName'
-        default: 'm1.medium'
-        type: enum
-        options:
-          - m1.medium
-        show_if: nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-
-      - variable: nodepools.0.openstackconfig.floatingipPool
-        description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
-        label: 'floatingipPool'
-        type: string
-        default: 'office'
-        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.imageId
-        description: 'OpenStack image id to use for the instance'
-        label: 'imageId'
-        type: string
-        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.imageName
-        description: 'OpenStack image name to use for the instance'
-        label: 'imageName'
-        type: string
-        default: 'ubuntu-22.04'
-        show_if: nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.netId
-        description: 'OpenStack network id the machine will be connected on'
-        label: 'netId'
-        type: string
-        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.netName
-        description: 'OpenStack network name the machine will be connected on'
-        label: 'netName'
-        type: string
-        default: 'local-net'
-        show_if: nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.keypairName
-        description: 'OpenStack keypair to use to SSH to the instance'
-        label: 'keypairName'
-        type: string
-        required: true
-        show_if: nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.region
-        description: 'OpenStack region name'
-        label: 'region'
-        default: RegionOne
-        type: string
-        required: true
-        show_if: nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.secretprivateKeyFile
-        description: 'File contents for privateKeyFile '
-        label: 'secretprivateKeyFile'
-        type: string
-    #    default: 'openstack-privatekey'
-        required: true
-        show_if: nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.secGroups
-        description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
-        label: 'secGroups'
-        type: string
-        default: 'default'
-        show_if: nodePoolTemplate=SinglePool
         group: 'Master Nodepool Extra'
       - variable: nodepools.0.openstackconfig.availabilityZone
         description: 'OpenStack availability zone'
@@ -558,22 +575,6 @@ questions:
         label: 'novaNetwork'
         type: boolean
         default: 'false'
-        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.sshPort
-        description: 'OpenStack SSH port'
-        label: 'sshPort'
-        default: '22'
-        type: string
-        required: true
-        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.sshUser
-        description: 'OpenStack SSH Username for VM login'
-        label: 'sshUser'
-        default: ubuntu
-        type: string
-        required: true
         show_if: configMode=Advanced && nodePoolTemplate=SinglePool
         group: 'Master Nodepool Extra'
       - variable: nodepools.0.openstackconfig.tenantDomainId

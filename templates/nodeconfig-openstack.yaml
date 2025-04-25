@@ -13,23 +13,11 @@ metadata:
 
 activeTimeout: "{{ $nodepool.openstackconfig.activeTimeout | default "200" }}"
 
-{{- if lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials }}
-  {{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId }}
-applicationCredentialId: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialId | b64dec }}
-  {{- end }}
-  {{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName }}
-applicationCredentialName: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialName | b64dec }}
-  {{- end }}
-  {{- if (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret }}
-applicationCredentialSecret: {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretApplicationCredentials).data.applicationCredentialSecret | b64dec }}
-  {{- end }}
-{{- else }}
-applicationCredentialId: {{ .Values.cluster.config.openstack.applicationCredentialId }}
-applicationCredentialName: {{ .Values.cluster.config.openstack.applicationCredentialName }}
-applicationCredentialSecret: {{ .Values.cluster.config.openstack.applicationCredentialSecret }}
-{{- end }}
+applicationCredentialId: {{ $.Values.cluster.config.openstack.applicationCredentialId }}
+applicationCredentialName: {{ $.Values.cluster.config.openstack.applicationCredentialName }}
+applicationCredentialSecret: {{ $.Values.cluster.config.openstack.applicationCredentialSecret }}
 
-authUrl: {{ $nodepool.openstackconfig.authUrl }}
+authUrl: {{ $.Values.cluster.config.openstack.authUrl }}
 {{- if $nodepool.openstackconfig.availabilityZone }}
 availabilityZone: {{ $nodepool.openstackconfig.availabilityZone }}
 {{- end }}
@@ -78,13 +66,11 @@ netId: {{ $nodepool.openstackconfig.netId }}
 netName: {{ $nodepool.openstackconfig.netName }}
 {{- end }}
 novaNetwork: {{ $nodepool.openstackconfig.novaNetwork | default false}}
-{{ if lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretprivateKeyFile }}
-privateKeyFile: | {{ (lookup "v1" "Secret" $.Release.Namespace $nodepool.openstackconfig.secretprivateKeyFile).data.privateKeyFile | b64dec | nindent 4 }}
-{{- end }}
-region: {{ $nodepool.openstackconfig.region | default "RegionOne" }}
-secGroups: {{ $nodepool.openstackconfig.secGroups | default "default" }}
-sshPort: "{{ $nodepool.openstackconfig.sshPort | default "22" }}"
-sshUser: {{ $nodepool.openstackconfig.sshUser | default "ubuntu" }}
+privateKeyFile: | {{ $.Values.cluster.config.openstack.defaultPrivateKey | nindent 4 }}
+region: {{ $.Values.cluster.config.openstack.region }}
+secGroups: {{ $.Values.cluster.config.openstack.secGroups }}
+sshPort: {{ $.Values.cluster.config.openstack.sshPort}}
+sshUser: {{ $.Values.cluster.config.openstack.sshUser }}
 {{- if $nodepool.openstackconfig.tenantDomainId }}
 tenantDomainId: {{ $nodepool.openstackconfig.tenantDomainId  }}
 {{- end }}
