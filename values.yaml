@@ -1,15 +1,67 @@
 # yamllint disable rule:document-start
 # yamllint disable rule:line-length
 
-# x-additionalManifests: &additionalManifests |
-#   # Add Manifests that should additionally be deployed on the nodes/cluster
-
 # Simple or Advanced
 configMode: Simple
 nodePoolTemplate: SinglePool
 
 cloudprovider: openstack
 
+# Cloud Init definition
+# https://cloudinit.readthedocs.io/en/latest/reference/modules.html
+x-cloudinit: &userDataFile |
+  #cloud-config
+  # package_update: true
+  # package_upgrade: true
+  cloud_config_modules:
+    - runcmd
+  runcmd:
+    - |
+      echo "Hello World!"
+  output: {all: '| tee -a /var/log/cloud-init-output.log'}
+
+x-openstackconfig: &openstackconfig
+  activeTimeout:
+  # availabilityZone:
+  # bootFromVolume: # Default: false
+  # cacert:
+  # configDrive:  # Default: false
+  # domainId:
+  # domainName:
+  # endpointType: # (adminURL, internalURL or publicURL)
+  # flavorId:
+  flavorName: ""
+  # floatingipPool:
+  # imageId:
+  imageName: ""
+  # insecure: # Default: false
+  # ipVersion:  # Default: 4
+  keypairName: ""
+  # netId:
+  netName: ""
+  # novaNetwork: # Default: false
+  region: ""
+  secGroups: "" # Comma separated list (no spaces before and after)
+  # sshPort:  # Default: 22
+  # sshUser:  # Default: ubuntu
+  # tenantDomainId:
+  # tenantDomainName:
+  # tenantId:
+  # tenantName:
+  userDataFile: *userDataFile
+  # userDomainId:
+  # userDomainName:
+  # userId:
+  # username:
+  # volumeDevicePath:
+  # volumeId:
+  # volumeName:
+  # volumeSize:
+  # volumeType:
+
+
+x-additionalManifests: &additionalManifests |
+  # Add Manifests that should additionally be deployed on the nodes/cluster
 
 # cluster values
 cluster:
@@ -28,23 +80,26 @@ cluster:
     cloudCredentialSecretName: ""
 
     openstack:
-      authUrl: ""
+      authUrl: "https://cloud.virtomat.net:5000/v3"
+      applicationCredentialSecretName: os-app-cred-qlj75bbn2e
       applicationCredentialName: ""
       applicationCredentialId: ""
       applicationCredentialSecret: ""
-      defaultPrivateKey: |
-        -----BEGIN OPENSSH PRIVATE KEY-----
-        b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-        QyNTUxOQAAACD6GCQIea+xjQss77/KM1rzP9EDobU8on849hXOXgvU+AAAAKBJ7GiDSexo
-        gwAAAAtzc2gtZWQyNTUxOQAAACD6GCQIea+xjQss77/KM1rzP9EDobU8on849hXOXgvU+A
-        AAAEA49MGONYhJx9Ir2Rezg60NoPKKLCD19eCKX2KJjaphgfoYJAh5r7GNCyzvv8ozWvM/
-        0QOhtTyifzj2Fc5eC9T4AAAAHXJhZHUubW9pc2FuQGNvbXB1dGFjZW50ZXIuY29t
-        -----END OPENSSH PRIVATE KEY-----
-      defaultKeypairName: bootstrap
+      defaultKeypairName: bootstrap  # User's Key Pair from Openstack/Horizon
+      defaultPrivateKeyFileSecretName: openstack-privatekey
       sshPort: 22
       sshUser: ubuntu
       region: RegionOne
       secGroups: default
+      imageId:
+      imageName: ubuntu-22.04
+      masterFlavorId:
+      masterFlavorName: m1.medium
+      workerFlavorId:
+      workerFlavorName: m1.medium
+      floatingipPool: office
+      netId:
+      netName: local-net
 
     # defaultClusterRoleForProjectMembers:
     # defaultPodSecurityAdmissionConfigurationTemplateName:
@@ -64,7 +119,7 @@ cluster:
 
     
     etcd:
-      disableSnapshots: false
+      disableSnapshots: true
       snapshotRetention: 5
       snapshotScheduleCron: 0 */5 * * *
       # s3:
@@ -178,7 +233,7 @@ cluster:
 
 
 nodepools:
-  - name: pool
+  - name: master
     # displayName:  # Default: $nodepool.name
     quantity: 1
     etcdRole: true
@@ -191,7 +246,7 @@ nodepools:
     #     key: value
     #     value: value
 
-    # openstackconfig: *openstackconfig
+    openstackconfig: *openstackconfig
 
     # drainBeforeDelete:
     # drainBeforeDeleteTimeout:

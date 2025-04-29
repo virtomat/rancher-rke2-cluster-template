@@ -93,7 +93,7 @@ questions:
   - variable: cluster.config.enableNetworkPolicy
     description: 'Enable network policy'
     label: 'enableNetworkPolicy'
-    default: false
+    default: 'false'
     type: boolean
     group: 'General'
     show_if: configMode=Advanced
@@ -142,6 +142,39 @@ questions:
         label: 'keypairName'
         type: string
         required: true
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.floatingipPool
+        description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
+        label: 'floatingipPool'
+        type: string
+        default: 'office'
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.imageId
+        description: 'OpenStack image id to use for the instance'
+        label: 'imageId'
+        type: string
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.imageName
+        description: 'OpenStack image name to use for the instance'
+        label: 'imageName'
+        type: string
+        default: 'ubuntu-22.04'
+        show_if: nodePoolTemplate=SinglePool
+        group: 'General'
+      - variable: cluster.config.openstack.netId
+        description: 'OpenStack network id the machine will be connected on'
+        label: 'netId'
+        type: string
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.netName
+        description: 'OpenStack network name the machine will be connected on'
+        label: 'netName'
+        type: string
+        default: 'local-net'
         show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.region
@@ -366,6 +399,20 @@ questions:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   # machinePool
+  - variable: cluster.config.openstack.masterFlavorName
+    description: 'OpenStack flavor name to use for the Master node'
+    label: 'flavorName'
+    default: 'm1.medium'
+    type: enum
+    options:
+      - m1.medium
+    group: 'Master Nodepool'
+  - variable: cluster.config.openstack.masterFlavorId
+    description: 'OpenStack flavor id to use for the instance'
+    label: 'flavorId'
+    type: string
+    show_if: configMode=Advanced
+    group: 'Master Nodepool'
   - variable: nodepools.0.name
     default: 'master'
     description: 'Specify nodepool name'
@@ -398,58 +445,6 @@ questions:
     label: worker
     type: boolean
     #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Master Nodepool'
-  - variable: nodepools.0.openstackconfig.flavorName
-    description: 'OpenStack flavor name to use for the instance'
-    label: 'flavorName'
-    default: 'm1.medium'
-    type: enum
-    options:
-      - m1.medium
-    group: 'Master Nodepool'
-  - variable: nodepools.0.openstackconfig.flavorId
-    description: 'OpenStack flavor id to use for the instance'
-    label: 'flavorId'
-    type: string
-    show_if: configMode=Advanced
-    group: 'Master Nodepool'
-    # TODO: Move to General
-  - variable: nodepools.0.openstackconfig.floatingipPool
-    description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
-    label: 'floatingipPool'
-    type: string
-    default: 'office'
-    show_if: configMode=Advanced
-    group: 'Master Nodepool'
-    # FIXME: Could be moved to General (do we want to support different images for master/worker pools?)
-  - variable: nodepools.0.openstackconfig.imageId
-    description: 'OpenStack image id to use for the instance'
-    label: 'imageId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Master Nodepool'
-    # FIXME: Could be moved to General (do we want to support different images for master/worker pools?)
-  - variable: nodepools.0.openstackconfig.imageName
-    description: 'OpenStack image name to use for the instance'
-    label: 'imageName'
-    type: string
-    default: 'ubuntu-22.04'
-    show_if: nodePoolTemplate=SinglePool
-    group: 'Master Nodepool'
-    # TODO: Move to General
-  - variable: nodepools.0.openstackconfig.netId
-    description: 'OpenStack network id the machine will be connected on'
-    label: 'netId'
-    type: string
-    show_if: configMode=Advanced && nodePoolTemplate=SinglePool
-    group: 'Master Nodepool'
-    # TODO: Move to General
-  - variable: nodepools.0.openstackconfig.netName
-    description: 'OpenStack network name the machine will be connected on'
-    label: 'netName'
-    type: string
-    default: 'local-net'
-    show_if: nodePoolTemplate=SinglePool
     group: 'Master Nodepool'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

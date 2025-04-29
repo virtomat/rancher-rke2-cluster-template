@@ -60,3 +60,10 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "rancher-cluster-templates.derivedNamespace" -}}
+{{- $appCredSecretName := .Values.cluster.config.openstack.applicationCredentialSecretName }}
+{{- $suffix := regexReplaceAll "^os-app-cred-" $appCredSecretName "" }}
+{{- printf "u-%s" $suffix }}
+{{- end }}
+

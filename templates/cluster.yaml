@@ -1,11 +1,13 @@
 # yamllint disable rule:line-length
 # yamllint disable rule:braces
 ---
+{{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
+
 apiVersion: provisioning.cattle.io/v1
 kind: Cluster
 metadata:
   name: {{ .Values.cluster.name }}
-  namespace: fleet-default
+  namespace: {{$namespace}}
   {{- if .Values.cluster.labels }}
   labels:
     {{- with .Values.cluster.labels }}

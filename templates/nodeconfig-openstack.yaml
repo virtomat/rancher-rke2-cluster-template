@@ -4,20 +4,77 @@
 
 {{- if eq .Values.cloudprovider "openstack" }}
 {{- range $index, $nodepool := .Values.nodepools }}
+{{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 ---
 apiVersion: rke-machine-config.cattle.io/v1
 kind: OpenstackConfig
 metadata:
   name: "{{ $.Values.cluster.name }}-{{ $nodepool.name }}"
-  namespace: {{ $.Release.Namespace }}
+  namespace: {{ $namespace }}
 
-activeTimeout: "{{ $nodepool.openstackconfig.activeTimeout | default "200" }}"
+activeTimeout: {{ $nodepool.openstackconfig.activeTimeout | default "200" | quote }}
 
-applicationCredentialId: {{ $.Values.cluster.config.openstack.applicationCredentialId }}
-applicationCredentialName: {{ $.Values.cluster.config.openstack.applicationCredentialName }}
-applicationCredentialSecret: {{ $.Values.cluster.config.openstack.applicationCredentialSecret }}
+{{- $val := $.Values.cluster.config.openstack }}
+{{- $secret := (lookup "v1" "Secret" $namespace $val.applicationCredentialSecretName) }}
+{{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
+applicationCredentialId: {{- if $val.applicationCredentialId }}
+  {{ $val.applicationCredentialId }}
+  {{- else if and $secret $secret.data.applicationCredentialId }}
+  {{ $secret.data.applicationCredentialId | b64dec }}
+  {{- end }}
+{{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
+applicationCredentialName: {{- if $val.applicationCredentialName }}
+  {{ $val.applicationCredentialName }}
+  {{- else if and $secret $secret.data.applicationCredentialName }}
+  {{ $secret.data.applicationCredentialName | b64dec }}
+  {{- end }}
+{{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
+applicationCredentialSecret: {{- if $val.applicationCredentialSecret }}
+  {{ $val.applicationCredentialSecret }}
+  {{- else if and $secret $secret.data.applicationCredentialSecret }}
+  {{ $secret.data.applicationCredentialSecret | b64dec }}
+  {{- end }}
 
 authUrl: {{ $.Values.cluster.config.openstack.authUrl }}
+
+keypairName: {{ $.Values.cluster.config.openstack.defaultKeypairName }}
+
+{{ if lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName }}
+privateKeyFile: | {{ (lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName).data.privateKeyFile | b64dec | nindent 4 }}
+{{- end }}
+
+region: {{ $.Values.cluster.config.openstack.region }}
+
+secGroups: {{ $.Values.cluster.config.openstack.secGroups }}
+
+sshPort: {{ $.Values.cluster.config.openstack.sshPort | quote}}
+
+sshUser: {{ $.Values.cluster.config.openstack.sshUser }}
+
+{{- if eq $index 0 }}
+flavorName: {{ $.Values.cluster.config.openstack.masterFlavorName }}
+  {{- if $.Values.cluster.config.openstack.masterFlavorId }}
+flavorId: {{ $.Values.cluster.config.openstack.masterFlavorId }}
+  {{- end }}
+{{- else }}
+flavorName: {{ $.Values.cluster.config.openstack.workerFlavorName }}
+  {{- if $.Values.cluster.config.openstack.workerFlavorId }}
+flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
+  {{- end }}
+{{- end }}
+
+floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}
+
+netName: {{ $.Values.cluster.config.openstack.netName }}
+{{- if  $.Values.cluster.config.openstack.netId }}
+netId: {{ $.Values.cluster.config.openstack.netId }}
+{{- end }}
+
+imageName: {{ $.Values.cluster.config.openstack.imageName }}
+{{- if $.Values.cluster.config.openstack.imageId }}
+imageId: {{ $.Values.cluster.config.openstack.imageId }}
+{{- end }}
+
 {{- if $nodepool.openstackconfig.availabilityZone }}
 availabilityZone: {{ $nodepool.openstackconfig.availabilityZone }}
 {{- end }}
@@ -39,38 +96,11 @@ domainName: {{ $nodepool.openstackconfig.domainName | default "default" }}
 {{- if $nodepool.openstackconfig.endpointType }}
 endpointType: {{ $nodepool.openstackconfig.endpointType }}
 {{- end }}
-{{- if $nodepool.openstackconfig.flavorId }}
-flavorId: {{ $nodepool.openstackconfig.flavorId }}
-{{- end }}
-{{- if $nodepool.openstackconfig.flavorName }}
-flavorName: {{ $nodepool.openstackconfig.flavorName }}
-{{- end }}
-{{- if  $nodepool.openstackconfig.floatingipPool }}
-floatingipPool: {{ $nodepool.openstackconfig.floatingipPool }}
-{{- end }}
-{{- if $nodepool.openstackconfig.imageId }}
-imageId: {{ $nodepool.openstackconfig.imageId }}
-{{- end }}
-{{- if $nodepool.openstackconfig.imageName }}
-imageName: {{ $nodepool.openstackconfig.imageName }}
-{{- end }}
 {{- if $nodepool.openstackconfig.insecure }}
 insecure: {{ $nodepool.openstackconfig.insecure }}
 {{- end }}
 ipVersion: "{{ $nodepool.openstackconfig.ipVersion | default "4" }}"
-keypairName: {{ $nodepool.openstackconfig.keypairName }}
-{{- if  $nodepool.openstackconfig.netId }}
-netId: {{ $nodepool.openstackconfig.netId }}
-{{- end }}
-{{- if  $nodepool.openstackconfig.netName }}
-netName: {{ $nodepool.openstackconfig.netName }}
-{{- end }}
 novaNetwork: {{ $nodepool.openstackconfig.novaNetwork | default false}}
-privateKeyFile: | {{ $.Values.cluster.config.openstack.defaultPrivateKey | nindent 4 }}
-region: {{ $.Values.cluster.config.openstack.region }}
-secGroups: {{ $.Values.cluster.config.openstack.secGroups }}
-sshPort: {{ $.Values.cluster.config.openstack.sshPort}}
-sshUser: {{ $.Values.cluster.config.openstack.sshUser }}
 {{- if $nodepool.openstackconfig.tenantDomainId }}
 tenantDomainId: {{ $nodepool.openstackconfig.tenantDomainId  }}
 {{- end }}
