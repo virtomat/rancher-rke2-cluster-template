@@ -118,16 +118,19 @@ questions:
     group: 'General'
     show_subquestion_if: true
     subquestions:
+      - variable: cluster.config.openstack.applicationCredentialSecretName
+        label: 'applicationCredentialSecretName'
+        type: string
+        description: 'Secret name holding Openstack Application Credential data'
+        group: 'General'
       - variable: cluster.config.openstack.applicationCredentialId
         label: 'applicationCredentialId'
         type: string
-        required: true
         description: 'ID value from the Openstack Application Credential'
         group: 'General'
       - variable: cluster.config.openstack.applicationCredentialSecret
         label: 'applicationCredentialSecret'
         type: string
-        required: true
         description: 'Secret value from the Openstack Application Credential'
         group: 'General'
       - variable: cluster.config.openstack.defaultPrivateKey
