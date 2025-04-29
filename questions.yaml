@@ -122,16 +122,19 @@ questions:
         label: 'applicationCredentialSecretName'
         type: string
         description: 'Secret name holding Openstack Application Credential data'
+        required: true
         group: 'General'
       - variable: cluster.config.openstack.applicationCredentialId
         label: 'applicationCredentialId'
         type: string
         description: 'ID value from the Openstack Application Credential'
+        show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.applicationCredentialSecret
         label: 'applicationCredentialSecret'
         type: string
         description: 'Secret value from the Openstack Application Credential'
+        show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.defaultPrivateKey
         description: 'File contents for privateKeyFile. It used a default private key, use your own for increased security.'
