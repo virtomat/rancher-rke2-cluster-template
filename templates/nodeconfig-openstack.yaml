@@ -40,7 +40,7 @@ authUrl: {{ $.Values.cluster.config.openstack.authUrl }}
 keypairName: {{ $.Values.cluster.config.openstack.defaultKeypairName }}
 
 {{ if lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName }}
-privateKeyFile: | {{ (lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName).data.privateKeyFile | b64dec | nindent 4 }}
+privateKeyFile: | {{ (lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName).data.privatekey | b64dec | nindent 4 }}
 {{- end }}
 
 region: {{ $.Values.cluster.config.openstack.region }}
