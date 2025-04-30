@@ -28,7 +28,7 @@ questions:
       - MultiPool
     group: 'General'
   - variable: cluster.name
-    default: mycluster
+    default: 'test'
     description: 'Specify the name of the cluster'
     label: 'Cluster Name'
     required: true
