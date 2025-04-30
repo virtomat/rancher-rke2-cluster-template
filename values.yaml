@@ -65,7 +65,7 @@ x-additionalManifests: &additionalManifests |
 
 # cluster values
 cluster:
-  name: test-cluster
+  name: test
   # labels:
   #   key: value
   # annotations:
