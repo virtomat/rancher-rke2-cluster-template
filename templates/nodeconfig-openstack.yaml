@@ -63,7 +63,7 @@ flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
   {{- end }}
 {{- end }}
 
-{{- if and (eq $nodepool.name "master") (eq $nodepool.quantity 1) }}
+{{- if and (eq $nodepool.name "master") (eq ($nodepool.quantity | int) 1) }}
 floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}
 {{- end }}
 
