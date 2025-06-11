@@ -51,7 +51,7 @@ sshPort: {{ $.Values.cluster.config.openstack.sshPort | quote}}
 
 sshUser: {{ $.Values.cluster.config.openstack.sshUser }}
 
-{{- if eq $index 0 }}
+{{- if eq $nodepool.name "master" }}
 flavorName: {{ $.Values.cluster.config.openstack.masterFlavorName }}
   {{- if $.Values.cluster.config.openstack.masterFlavorId }}
 flavorId: {{ $.Values.cluster.config.openstack.masterFlavorId }}
@@ -63,7 +63,9 @@ flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
   {{- end }}
 {{- end }}
 
+{{- if and (eq $nodepool.name "master") (eq $nodepool.quantity 1) }}
 floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}
+{{- end }}
 
 netName: {{ $.Values.cluster.config.openstack.netName }}
 {{- if  $.Values.cluster.config.openstack.netId }}
