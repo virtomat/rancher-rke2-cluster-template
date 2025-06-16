@@ -5,20 +5,8 @@
 configMode: Simple
 nodePoolTemplate: SinglePool
 
-cloudprovider: openstack
-
 # Cloud Init definition
 # https://cloudinit.readthedocs.io/en/latest/reference/modules.html
-x-cloudinit: &userDataFile |
-  #cloud-config
-  # package_update: true
-  # package_upgrade: true
-  cloud_config_modules:
-    - runcmd
-  runcmd:
-    - |
-      echo "Hello World!"
-  output: {all: '| tee -a /var/log/cloud-init-output.log'}
 
 x-openstackconfig: &openstackconfig
   activeTimeout:
@@ -48,7 +36,7 @@ x-openstackconfig: &openstackconfig
   # tenantDomainName:
   # tenantId:
   # tenantName:
-  userDataFile: *userDataFile
+  # userDataFile: *userDataFile
   # userDomainId:
   # userDomainName:
   # userId:
@@ -58,10 +46,6 @@ x-openstackconfig: &openstackconfig
   # volumeName:
   # volumeSize:
   # volumeType:
-
-
-x-additionalManifests: &additionalManifests |
-  # Add Manifests that should additionally be deployed on the nodes/cluster
 
 # cluster values
 cluster:
@@ -81,10 +65,10 @@ cluster:
 
     openstack:
       authUrl: "https://cloud.virtomat.net:5000/v3"
-      applicationCredentialSecretName:  "" # os-app-cred-qlj75bbn2e
+      applicationCredentialSecretName: "os-app-cred-xtpfiucyek"
       applicationCredentialName: ""
-      applicationCredentialId: ""
-      applicationCredentialSecret: ""
+      applicationCredentialId: "e2002ed4c26c48f5abadd8b79425d3d0"
+      applicationCredentialSecret: "a3cc5aa9d461f8f63757dc1f13e876a049924d6c4bfd18bc7848ff6227c4a503"
       defaultKeypairName: bootstrap  # User's Key Pair from Openstack/Horizon
       defaultPrivateKeyFileSecretName: openstack-privatekey
       sshPort: 22
@@ -94,12 +78,17 @@ cluster:
       imageId:
       imageName: ubuntu-22.04
       masterFlavorId:
-      masterFlavorName: m1.medium
+      masterFlavorName: m1.small
       workerFlavorId:
       workerFlavorName: m1.medium
       floatingipPool: office
       netId:
       netName: local-net
+
+      # Openstack CCM
+      ccmCloudConfigSecretName: "os-ccm-cloud-config"
+      subnetId: "345dc7b8-98cc-4f5a-9d7e-b129f6691298"           # the value from secret (if found) takes precedence
+      floatingNetworkId: "543d2955-5ab0-4077-8637-0d54cf55695b"  # the value from secret (if found) takes precedence
 
     # defaultClusterRoleForProjectMembers:
     # defaultPodSecurityAdmissionConfigurationTemplateName:
@@ -113,11 +102,9 @@ cluster:
       enabled: false
 
     # additionalManifests: *additionalManifests
-    additionalManifests: |
-      # Add Manifests that should additionally be deployed on the nodes/cluster
+
     # chartValues: {}
 
-    
     etcd:
       disableSnapshots: true
       snapshotRetention: 5
@@ -156,7 +143,6 @@ cluster:
       #   - rke2-metrics-server
 
       # disable_scheduler:  # Default: false
-      # disable_cloud_controller: true  # Default: false
       # disable_kube_proxy: false # Default: false
       # etcd_expose_metrics: false  # Default: false
       # profile: "" # Validate system configuration against the selected benchmark (valid items: cis-1.5, cis-1.6 )
@@ -170,8 +156,6 @@ cluster:
       # write_kubeconfig_mode:  # Default: 600, doesn't work / reflected in CLuster config but not deployed on server
       # use_service_account_credentials:  # Default: false
       # protect_kernel_defaults:  # Default: false
-      # cloud_provider_name: "" # https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/kubernetes-clusters-in-rancher-setup/set-up-cloud-providers
-      # cloud_provider_config: "" # cloud provider config secret here (example: secret://fleet-default:cloudprovider)
       # kube_controller_manager_arg:
       #   - kube controller manager arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager)
       # kube_scheduler_arg:
@@ -183,9 +167,9 @@ cluster:
       # kubelet_arg:
       # - kubelet arguments here (https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet)
 
-    machineSelectorConfig: {}
-      # kubelet_arg:
-      #   - cloud-provider=external
+    machineSelectorConfig:
+       kubelet_arg:
+         - cloud-provider=external
 
     # controlplane/etcd configuration settings
     # controlPlaneConfig:
@@ -231,23 +215,29 @@ cluster:
     #     # skipWaitForDeleteTimeoutSeconds: 0
     #     # timeout: 120
 
+    chartValues:
+      rke2-ingress-nginx:
+        controller:
+          service:
+            enabled: true
+            type: LoadBalancer
 
 nodepools:
   - name: master
     # displayName:  # Default: $nodepool.name
-    quantity: 1
+    quantity: 3
     etcdRole: true
     controlPlaneRole: true
-    workerRole: true
-
-    labels: {}
+    workerRole: false
+    labels:
+      #node-role.kubernetes.io/control-plane: "true"
+      node.kubernetes.io/control-plane: "true"
+      node.kubernetes.io/exclude-from-external-load-balancers: "true"
     # taints:
     #   - effect: value
     #     key: value
     #     value: value
-
     openstackconfig: *openstackconfig
-
     # drainBeforeDelete:
     # drainBeforeDeleteTimeout:
     # machineDeploymentLabels:
@@ -258,56 +248,31 @@ nodepools:
     #   maxSurge:
     # unhealthyNodeTimeout:
 
-  # - name: control-plane-nodes
-  #   # displayName: cp-nodes
-  #   quantity: 3
-  #   etcdRole: true
-  #   controlPlaneRole: true
-  #   workerRole: false
-  #   # labels:
-  #   #   key: value
-  #   # taints:
-  #   #   effect: value
-  #   #   key: value
-  #   #   value: value
-  #   # paused: false
-  #   # drainBeforeDelete: true
-  #   # drainBeforeDeleteTimeout: 30s
-  #   # unhealthyNodeTimeout: 60s
-  #   # machineDeploymentLabels:
-  #   #   key: value
-  #   # machineDeploymentAnnotations:
-  #   #   key: value
-  #   # rollingUpdate:
-  #   #   maxUnavailable: 1
-  #   #   maxSurge: 1
-  #   # cloud provider values here
-
-  # - name: worker-nodes
-  #   # displayName: wk-nodes
-  #   quantity: 3
-  #   etcdRole: false
-  #   controlPlaneRole: false
-  #   workerRole: true
-  #   # labels:
-  #   #   key: value
-  #   # taints:
-  #   #   effect: value
-  #   #   key: value
-  #   #   value: value
-  #   # paused: false
-  #   # drainBeforeDelete: true
-  #   # drainBeforeDeleteTimeout: 30s
-  #   # unhealthyNodeTimeout: 60s
-  #   # machineDeploymentLabels:
-  #   #   key: value
-  #   # machineDeploymentAnnotations:
-  #   #   key: value
-  #   # rollingUpdate:
-  #   #   maxUnavailable: 1
-  #   #   maxSurge: 1
-  #   # cloud provider values here
-
+  - name: worker
+    # displayName: wk-nodes
+    quantity: 1
+    etcdRole: false
+    controlPlaneRole: false
+    workerRole: true
+    labels:
+      node.kubernetes.io/worker: "true"
+    # taints:
+    #   effect: value
+    #   key: value
+    #   value: value
+    openstackconfig: *openstackconfig
+    # paused: false
+    # drainBeforeDelete: true
+    # drainBeforeDeleteTimeout: 30s
+    # unhealthyNodeTimeout: 60s
+    # machineDeploymentLabels:
+    #   key: value
+    # machineDeploymentAnnotations:
+    #   key: value
+    # rollingUpdate:
+    #   maxUnavailable: 1
+    #   maxSurge: 1
+    # cloud provider values here
 
 # addons values
 addons:

@@ -2,7 +2,6 @@
 # yamllint disable rule:line-length
 # yamllint disable rule:braces
 
-{{- if eq .Values.cloudprovider "openstack" }}
 {{- range $index, $nodepool := .Values.nodepools }}
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 ---
@@ -56,7 +55,7 @@ flavorName: {{ $.Values.cluster.config.openstack.masterFlavorName }}
   {{- if $.Values.cluster.config.openstack.masterFlavorId }}
 flavorId: {{ $.Values.cluster.config.openstack.masterFlavorId }}
   {{- end }}
-{{- else }}
+{{- else }}  # worker nodepool
 flavorName: {{ $.Values.cluster.config.openstack.workerFlavorName }}
   {{- if $.Values.cluster.config.openstack.workerFlavorId }}
 flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
@@ -146,5 +145,4 @@ volumeSize: "{{ $nodepool.openstackconfig.volumeSize }}"
 volumeType: {{ $nodepool.openstackconfig.volumeType }}
 {{- end }}
 
-{{- end }}
 {{- end }}

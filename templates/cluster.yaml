@@ -2,6 +2,7 @@
 # yamllint disable rule:braces
 ---
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
+{{- $userId := regexReplaceAll "^u-" $namespace "" }}
 
 apiVersion: provisioning.cattle.io/v1
 kind: Cluster
@@ -65,10 +66,9 @@ spec:
   # redeploySystemAgentGeneration:
 
   rkeConfig:
-    {{- with $.Values.cluster.config.additionalManifests }}
-    additionalManifest:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
+
+    additionalManifest: |
+{{ include "rancher-cluster-templates.openstackCcmManifest" . | indent 6 }}
 
     {{- if .Values.cluster.config.chartValues }}
     chartValues:
@@ -121,9 +121,8 @@ spec:
       disable-scheduler: {{ .Values.cluster.config.machineGlobalConfig.disable_scheduler }}
       {{- end }}
 
-      {{- if .Values.cluster.config.machineGlobalConfig.disable_cloud_controller }}
-      disable-cloud-controller: {{ .Values.cluster.config.machineGlobalConfig.disable_cloud_controller }}
-      {{- end }}
+      disable-cloud-controller: true
+
       {{- if .Values.cluster.config.machineGlobalConfig.disable_kube_proxy }}
       disable-kube-proxy: {{ .Values.cluster.config.machineGlobalConfig.disable_kube_proxy }}
       {{- end }}
@@ -159,12 +158,11 @@ spec:
       {{- if .Values.cluster.config.machineGlobalConfig.protect_kernel_defaults }}
       protect-kernel-defaults: {{ .Values.cluster.config.machineGlobalConfig.protect_kernel_defaults }}
       {{- end }}
-      {{- if .Values.cluster.config.machineGlobalConfig.cloud_provider_name }}
-      cloud-provider-name: {{ .Values.cluster.config.machineGlobalConfig.cloud_provider_name }}
-      {{- end }}
-      {{- if .Values.cluster.config.machineGlobalConfig.cloud_provider_config }}
-      cloud-provider-config: {{ .Values.cluster.config.machineGlobalConfig.cloud_provider_config }}
-      {{- end }}
+
+      cloud-provider-name: "external"
+
+      cloud-provider-config: "/etc/rancher/rke2/cloud.conf"
+
       {{- if .Values.cluster.config.machineGlobalConfig.kube_controller_manager_arg }}
       kube-controller-manager-arg: {{ .Values.cluster.config.machineGlobalConfig.kube_controller_manager_arg | toRawJson }}
       {{- end }}
@@ -198,7 +196,6 @@ spec:
     {{- end }}
 
     # machinePoolDefaults:
-    {{- if ne .Values.cloudprovider "custom" }}
     machinePools:
       {{- if .Values.nodepools }}
       {{- range $index, $nodepool := .Values.nodepools }}
@@ -248,7 +245,6 @@ spec:
         {{- end }}
       {{- end }}
       {{- end }}
-    {{- end }}
 
     machineSelectorConfig:
       {{- if .Values.cluster.config.machineSelectorConfig.kubelet_arg }}
@@ -269,9 +265,6 @@ spec:
           {{- end }}
           {{- if .Values.cluster.config.machineGlobalConfig.disable_scheduler }}
           disable-scheduler: {{ .Values.cluster.config.machineGlobalConfig.disable_scheduler }}
-          {{- end }}
-          {{- if .Values.cluster.config.machineGlobalConfig.disable_cloud_controller }}
-          disable-cloud-controller: {{ .Values.cluster.config.machineGlobalConfig.disable_cloud_controller }}
           {{- end }}
           {{- if .Values.cluster.config.controlPlaneConfig.disable_kube_proxy }}
           disable-kube-proxy: {{ .Values.cluster.config.controlPlaneConfig.disable_kube_proxy }}
@@ -306,12 +299,6 @@ spec:
           {{- if .Values.cluster.config.controlPlaneConfig.protect_kernel_defaults }}
           protect-kernel-defaults: {{ .Values.cluster.config.controlPlaneConfig.protect_kernel_defaults }}
           {{- end }}
-          {{- if .Values.cluster.config.controlPlaneConfig.cloud_provider_name }}
-          cloud-provider-name: {{ .Values.cluster.config.controlPlaneConfig.cloud_provider_name }}
-          {{- end }}
-          {{- if .Values.cluster.config.controlPlaneConfig.cloud_provider_config }}
-          cloud-provider-config: {{ .Values.cluster.config.controlPlaneConfig.cloud_provider_config }}
-          {{- end }}
           {{- if .Values.cluster.config.controlPlaneConfig.kube_controller_manager_arg }}
           kube-controller-manager-arg: {{ .Values.cluster.config.controlPlaneConfig.kube_controller_manager_arg | toRawJson }}
           {{- end }}
@@ -329,7 +316,7 @@ spec:
           {{- end }}
         machineLabelSelector:
           matchLabels:
-            node-role.kubernetes.io/control-plane: "true"
+            node.kubernetes.io/control-plane: "true"
       {{- end }}
 
       {{- if .Values.cluster.config.workerConfig }}
@@ -345,9 +332,6 @@ spec:
           {{- end }}
           {{- if .Values.cluster.config.machineGlobalConfig.disable_scheduler }}
           disable-scheduler: {{ .Values.cluster.config.machineGlobalConfig.disable_scheduler }}
-          {{- end }}
-          {{- if .Values.cluster.config.machineGlobalConfig.disable_cloud_controller }}
-          disable-cloud-controller: {{ .Values.cluster.config.machineGlobalConfig.disable_cloud_controller }}
           {{- end }}
           {{- if .Values.cluster.config.workerConfig.disable_kube_proxy }}
           disable-kube-proxy: {{ .Values.cluster.config.workerConfig.disable_kube_proxy }}
@@ -383,12 +367,6 @@ spec:
           {{- if .Values.cluster.config.workerConfig.protect_kernel_defaults }}
           protect-kernel-defaults: {{ .Values.cluster.config.workerConfig.protect_kernel_defaults }}
           {{- end }}
-          {{- if .Values.cluster.config.workerConfig.cloud_provider_name }}
-          cloud-provider-name: {{ .Values.cluster.config.workerConfig.cloud_provider_name }}
-          {{- end }}
-          {{- if .Values.cluster.config.workerConfig.cloud_provider_config }}
-          cloud-provider-config: {{ .Values.cluster.config.workerConfig.cloud_provider_config }}
-          {{- end }}
           {{- if .Values.cluster.config.workerConfig.kube_controller_manager_arg }}
           kube-controller-manager-arg: {{ .Values.cluster.config.workerConfig.kube_controller_manager_arg | toRawJson }}
           {{- end }}
@@ -409,7 +387,18 @@ spec:
             rke.cattle.io/worker-role: "true"
       {{- end }}
 
-    # machineSelectorFiles:
+    # distribute the file to that location
+    machineSelectorFiles:
+      - fileSources:
+          - secret:
+              items:
+                - key: cloud.conf
+                  path: /etc/rancher/rke2/cloud.conf
+                  permissions: "644"
+              name: {{ .Values.cluster.name }}-cloud-config
+      # machineLabelSelector can be omitted to target all nodes
+      # or add specific selectors if you want to target only certain nodes
+
     # provisionGeneration:
     {{- if and .Values.cluster.config.registries (eq .Values.cluster.config.registries.enabled true) }}
     registries:

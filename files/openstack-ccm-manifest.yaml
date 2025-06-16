@@ -1,0 +1,215 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:line-length
+# yamllint disable rule:braces
+---
+# CCM ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-controller-manager
+  namespace: kube-system
+---
+# CCM RBAC ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:cloud-controller-manager
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/status
+    verbs:
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - services/status
+    verbs:
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - create
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts/token
+    verbs:
+      - create
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+---
+# CCM RBAC ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:cloud-controller-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:cloud-controller-manager
+subjects:
+  - kind: ServiceAccount
+    name: cloud-controller-manager
+    namespace: kube-system
+---
+# RoleBinding for extension-apiserver-authentication-reader
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: extension-apiserver-authentication-reader-cloud-controller-manager
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: cloud-controller-manager
+    namespace: kube-system
+---
+# ClusterRole for node-controller
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:node-controller
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - update
+      - delete
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/status
+    verbs:
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+---
+# ClusterRoleBinding for node-controller
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:node-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:node-controller
+subjects:
+  - kind: ServiceAccount
+    name: cloud-controller-manager
+    namespace: kube-system
+---
+# OpenStack CCM Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openstack-cloud-controller-manager
+  namespace: kube-system
+  labels:
+    app: openstack-cloud-controller-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openstack-cloud-controller-manager
+  template:
+    metadata:
+      labels:
+        app: openstack-cloud-controller-manager
+    spec:
+      serviceAccountName: cloud-controller-manager
+      nodeSelector:
+        node.kubernetes.io/control-plane: "true"
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          value: "true"
+          effect: NoSchedule
+        - key: node.kubernetes.io/control-plane
+          effect: NoSchedule
+      hostNetwork: true
+      containers:
+        - name: openstack-cloud-controller-manager
+          image: registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.33.0
+          args:
+            - /bin/openstack-cloud-controller-manager
+            - --cloud-config=/etc/rancher/rke2/cloud.conf
+            - --cloud-provider=openstack
+            - --use-service-account-credentials=true
+            - --bind-address=127.0.0.1
+          volumeMounts:
+            - name: cloud-config
+              mountPath: /etc/rancher/rke2
+              readOnly: true
+      volumes:
+        - name: cloud-config
+          hostPath:
+            path: /etc/rancher/rke2
+            type: Directory
