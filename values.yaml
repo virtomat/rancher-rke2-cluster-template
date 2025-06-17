@@ -225,13 +225,13 @@ cluster:
 nodepools:
   - name: master
     # displayName:  # Default: $nodepool.name
-    quantity: 3
+    quantity: 1
     etcdRole: true
     controlPlaneRole: true
     workerRole: false
     labels:
-      node-role.kubernetes.io/control-plane: "true"
-      #node.kubernetes.io/control-plane: "true"
+      #node-role.kubernetes.io/control-plane: "true"
+      node.kubernetes.io/control-plane: "true"
       node.kubernetes.io/exclude-from-external-load-balancers: "true"
     # taints:
     #   - effect: value
@@ -250,7 +250,7 @@ nodepools:
 
   - name: worker
     # displayName: wk-nodes
-    quantity: 1
+    quantity: 0
     etcdRole: false
     controlPlaneRole: false
     workerRole: true

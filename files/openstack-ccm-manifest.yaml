@@ -187,8 +187,8 @@ spec:
     spec:
       serviceAccountName: cloud-controller-manager
       nodeSelector:
-        #node.kubernetes.io/control-plane: "true"
-        node-role.kubernetes.io/control-plane: "true"
+        node.kubernetes.io/control-plane: "true"
+        #node-role.kubernetes.io/control-plane: "true"
       tolerations:
         - key: node.cloudprovider.kubernetes.io/uninitialized
           value: "true"
