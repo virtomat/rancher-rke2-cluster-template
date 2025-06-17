@@ -6,7 +6,7 @@ This template processes the cloud.conf file and substitutes variables from value
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" . }}
 {{- $val := .Values.cluster.config.openstack }}
 {{- $secret := (lookup "v1" "Secret" $namespace $val.applicationCredentialSecretName) }}
-{{- $ccmCloudConfigSecret := (lookup "v1" "Secret" $namespace $val.ccmCloudConfigSecretName) }}
+{{- $ccmNetConfigSecret := (lookup "v1" "Secret" $namespace $val.ccmNetConfigSecretName) }}
 {{- $cloudConf := .Files.Get "files/cloud.conf" }}
 
 {{/* Extract application credential ID */}}
@@ -25,13 +25,13 @@ This template processes the cloud.conf file and substitutes variables from value
 
 {{/* Extract network configuration from secret */}}
 {{- $subnetIdFromSecret := "" }}
-{{- if and $ccmCloudConfigSecret (hasKey $ccmCloudConfigSecret.data "subnetId") }}
-{{- $subnetIdFromSecret = $ccmCloudConfigSecret.data.subnetId | b64dec }}
+{{- if and $ccmNetConfigSecret (hasKey $ccmNetConfigSecret.data "subnetId") }}
+{{- $subnetIdFromSecret = $ccmNetConfigSecret.data.subnetId | b64dec }}
 {{- end }}
 
 {{- $floatingNetworkIdFromSecret := "" }}
-{{- if and $ccmCloudConfigSecret (hasKey $ccmCloudConfigSecret.data "floatingNetworkId") }}
-{{- $floatingNetworkIdFromSecret = $ccmCloudConfigSecret.data.floatingNetworkId | b64dec }}
+{{- if and $ccmNetConfigSecret (hasKey $ccmNetConfigSecret.data "floatingNetworkId") }}
+{{- $floatingNetworkIdFromSecret = $ccmNetConfigSecret.data.floatingNetworkId | b64dec }}
 {{- end }}
 
 {{/* Perform variable substitutions */}}
