@@ -67,3 +67,11 @@ Create the name of the service account to use
 {{- printf "u-%s" $suffix }}
 {{- end }}
 
+{{/*
+Generate a consistent 8-character string based on release context
+*/}}
+{{- define "rancher-cluster-templates.randomString" -}}
+{{- $seed := printf "%s-%s-%s" .Release.Name .Release.Namespace .Chart.Version -}}
+{{- trunc 8 (sha256sum $seed) -}}
+{{- end }}
+

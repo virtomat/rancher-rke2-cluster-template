@@ -3,6 +3,7 @@
 ---
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 {{- $userId := regexReplaceAll "^u-" $namespace "" }}
+{{- $suffix := include "rancher-cluster-templates.randomString" . }}
 
 apiVersion: provisioning.cattle.io/v1
 kind: Cluster
@@ -395,7 +396,7 @@ spec:
                 - key: cloud.conf
                   path: /etc/rancher/rke2/cloud.conf
                   permissions: "644"
-              name: {{ .Values.cluster.name }}-cloud-config
+              name: {{ .Values.cluster.name }}-cloud-config-{{ $suffix }}
       # machineLabelSelector can be omitted to target all nodes
       # or add specific selectors if you want to target only certain nodes
 
