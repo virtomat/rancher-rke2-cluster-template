@@ -400,7 +400,7 @@ questions:
         group: 'Addons'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # ~~~~~~~~~~~~~~~~~~~ Section: Nodepool Generic ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: Master Nodepool Generic ~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   # machinePool
@@ -417,14 +417,6 @@ questions:
     description: 'OpenStack flavor id to use for the instance'
     label: 'flavorId'
     type: string
-    show_if: configMode=Advanced
-    group: 'Master Nodepool'
-  - variable: nodepools.0.name
-    default: 'master'
-    description: 'Specify nodepool name'
-    type: string
-    label: 'Nodepool Name'
-    required: true
     show_if: configMode=Advanced
     group: 'Master Nodepool'
   - variable: nodepools.0.quantity
@@ -662,3 +654,242 @@ questions:
         type: string
         show_if: configMode=Advanced && nodePoolTemplate=SinglePool
         group: 'Master Nodepool Extra'
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: Worker Nodepool Generic ~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  # machinePool
+  - variable: cluster.config.openstack.workerFlavorName
+    description: 'OpenStack flavor name to use for the Worker node'
+    label: 'flavorName'
+    default: 'm1.medium'
+    type: enum
+    options:
+      - m1.small
+      - m1.medium
+    group: 'Worker Nodepool'
+  - variable: cluster.config.openstack.workerFlavorId
+    description: 'OpenStack flavor id to use for the instance'
+    label: 'flavorId'
+    type: string
+    show_if: nodePoolTemplate=MultiPool
+    group: 'Worker Nodepool'
+  - variable: nodepools.1.quantity
+    description: 'Specify node count'
+    label: 'Node count'
+    type: int
+    default: '1'
+    required: true
+    group: 'Worker Nodepool'
+    show_if: nodePoolTemplate=MultiPool
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~ Section: Worker Nodepool Generic Extra ~~~~~~~~~~~~~~~~~
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  - variable: workernode.extraConfigs
+    default: 'false'
+    label: 'Show Worker Nodes Additional Configs (Generic)'
+    description: 'Additional Configuration specific for Worker Nodes'
+    type: boolean
+    group: 'Worker Nodepool Extra'
+    show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+    show_subquestion_if: true
+    subquestions:
+      - variable: nodepools.1.labels
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.drainBeforeDelete
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.drainBeforeDeleteTimeout
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.machineDeploymentLabels
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.machineDeploymentAnnotations
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.paused
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.rollingUpdate
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.rollingUpdate.maxUnavailable
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.rollingUpdate.maxSurge
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+      - variable: nodepools.1.unhealthyNodeTimeout
+        group: 'Worker Nodepool Extra'
+        show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+  - variable: workernode.openstackExtraConfigs
+    default: 'false'
+    label: 'Show Worker Nodes Additional Configs (Openstack)'
+    description: 'Additional Openstack Configuration specific for Worker Nodes'
+    type: boolean
+    group: 'Worker Nodepool Extra'
+    show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
+    show_subquestion_if: true
+    subquestions:
+      - variable: nodepools.1.openstackconfig.activeTimeout
+        description: 'OpenStack active timeout'
+        label: 'activeTimeout'
+        default: '200'
+        type: string
+        show_if: configMode=Advanced
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.availabilityZone
+        description: 'OpenStack availability zone'
+        label: 'availabilityZone'
+        type: string
+        show_if: configMode=Advanced
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.bootFromVolume
+        description: 'Enables Openstack instance to boot from volume as ROOT'
+        label: 'bootFromVolume'
+        default: 'false'
+        type: boolean
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.cacert
+        description: 'File contents for cacert'
+        label: 'cacert'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.configDrive
+        description: 'Enables the OpenStack config drive for the instance'
+        label: 'configDrive'
+        default: 'false'
+        type: boolean
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.domainId
+        description: 'OpenStack domain ID'
+        label: 'domainId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.domainName
+        description: 'OpenStack domain name'
+        label: 'domainName'
+        default: default
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.endpointType
+        description: 'OpenStack endpoint type (adminURL, internalURL or publicURL)'
+        label: 'endpointType'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.insecure
+        description: 'Disable TLS credential checking'
+        label: 'insecure'
+        default: 'false'
+        type: boolean
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.ipVersion
+        description: 'OpenStack version of IP address assigned for the machine'
+        label: 'ipVersion'
+        default: '4'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.novaNetwork
+        description: 'Use the nova networking services instead of neutron.'
+        label: 'novaNetwork'
+        type: boolean
+        default: 'false'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.tenantDomainId
+        label: 'tenantDomainId'
+        type: string
+        description: 'OpenStack tenant domain id'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.tenantDomainName
+        label: 'tenantDomainName'
+        type: string
+        description: 'OpenStack tenant domain name'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.tenantId
+        label: 'tenantId'
+        type: string
+        description: 'OpenStack tenant id'
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.tenantName
+        description: 'OpenStack tenant name'
+        label: 'tenantName'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.userDataFile
+        description: 'File contents for userDataFile'
+        label: 'userDataFile'
+        type: multiline
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.userDomainId
+        description: 'OpenStack user domain id'
+        label: 'userDomainId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.userDomainName
+        description: 'OpenStack user domain name'
+        label: 'userDomainName'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.userId
+        description: 'OpenStack user-id'
+        label: 'userId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.username
+        description: 'OpenStack username'
+        label: 'username'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.volumeDevicePath
+        description: "OpenStack volume device path (attaching); Omit for auto '/dev/vdb'"
+        label: 'volumeDevicePath'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.volumeId
+        description: 'OpenStack volume id (existing)'
+        label: 'volumeId'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.volumeName
+        description: 'OpenStack volume name (creating)'
+        label: 'volumeName'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.volumeSize
+        description: 'OpenStack volume size (GiB) when creating a volume'
+        label: 'volumeSize'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'
+      - variable: nodepools.1.openstackconfig.volumeType
+        description: 'OpenStack volume type (ssd, ...)'
+        label: 'volumeType'
+        type: string
+        show_if: configMode=Advanced && nodePoolTemplate=SinglePool
+        group: 'Worker Nodepool Extra'

@@ -203,8 +203,8 @@ spec:
       - name: {{ $nodepool.name }}
         displayName: {{ $nodepool.displayName | default $nodepool.name }}
         quantity: {{ $nodepool.quantity }}
-        etcdRole: {{ $nodepool.etcdRole }}
-        controlPlaneRole: {{ $nodepool.controlPlaneRole }}
+        etcdRole: {{ or (and (eq $.Values.nodePoolTemplate "MultiPool") (eq $index 0)) (eq $.Values.nodePoolTemplate "SinglePool") }}
+        controlPlaneRole: {{ or (and (eq $.Values.nodePoolTemplate "MultiPool") (eq $index 0)) (eq $.Values.nodePoolTemplate "SinglePool") }}
         # assumed false if index is zero (first pool is for master nodes) and true otherwise (the rest of the pools are for worker nodes)
         workerRole: {{ or (and (eq $.Values.nodePoolTemplate "MultiPool") (ne $index 0)) (eq $.Values.nodePoolTemplate "SinglePool") }}
         {{- if $nodepool.labels }}
