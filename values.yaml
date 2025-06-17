@@ -250,7 +250,7 @@ nodepools:
 
   - name: worker
     # displayName: wk-nodes
-    quantity: 0
+    quantity: 1
     etcdRole: false
     controlPlaneRole: false
     workerRole: true
