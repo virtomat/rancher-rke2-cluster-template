@@ -230,8 +230,8 @@ nodepools:
     controlPlaneRole: true
     workerRole: false
     labels:
-      #node-role.kubernetes.io/control-plane: "true"
-      node.kubernetes.io/control-plane: "true"
+      node-role.kubernetes.io/control-plane: "true"
+      #node.kubernetes.io/control-plane: "true"
       node.kubernetes.io/exclude-from-external-load-balancers: "true"
     # taints:
     #   - effect: value
