@@ -200,6 +200,7 @@ spec:
     machinePools:
       {{- if .Values.nodepools }}
       {{- range $index, $nodepool := .Values.nodepools }}
+      {{- if or (eq $index 0) (eq $.Values.nodePoolTemplate "MultiPool") }}
       - name: {{ $nodepool.name }}
         displayName: {{ $nodepool.displayName | default $nodepool.name }}
         quantity: {{ $nodepool.quantity }}
@@ -244,6 +245,7 @@ spec:
         {{- if $nodepool.unhealthyNodeTimeout }}
         unhealthyNodeTimeout: {{ $nodepool.unhealthyNodeTimeout }}
         {{- end }}
+      {{- end }}
       {{- end }}
       {{- end }}
 
