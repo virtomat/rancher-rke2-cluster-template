@@ -669,12 +669,13 @@ questions:
       - m1.small
       - m1.medium
     group: 'Worker Nodepool'
+    show_if: "nodePoolTemplate=MultiPool"
   - variable: cluster.config.openstack.workerFlavorId
     description: 'OpenStack flavor id to use for the instance'
     label: 'flavorId'
     type: string
-    show_if: nodePoolTemplate=MultiPool
     group: 'Worker Nodepool'
+    show_if: "nodePoolTemplate=MultiPool"
   - variable: nodepools.1.quantity
     description: 'Specify node count'
     label: 'Node count'
@@ -682,7 +683,7 @@ questions:
     default: '1'
     required: true
     group: 'Worker Nodepool'
-    show_if: nodePoolTemplate=MultiPool
+    show_if: "nodePoolTemplate=MultiPool"
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~ Section: Worker Nodepool Generic Extra ~~~~~~~~~~~~~~~~~
