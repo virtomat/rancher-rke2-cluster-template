@@ -675,7 +675,7 @@ questions:
     label: 'flavorId'
     type: string
     group: 'Worker Nodepool'
-    show_if: "nodePoolTemplate=MultiPool"
+    show_if: "configMode=Advanced && nodePoolTemplate=MultiPool"
   - variable: nodepools.1.quantity
     description: 'Specify node count'
     label: 'Node count'
