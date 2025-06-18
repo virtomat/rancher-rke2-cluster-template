@@ -426,24 +426,6 @@ questions:
     default: '1'
     required: true
     group: 'Master Nodepool'
-  - variable: nodepools.0.etcd
-    default: 'true'
-    label: etcd
-    type: boolean
-    #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Master Nodepool'
-  - variable: nodepools.0.controlplane
-    label: controlplane
-    default: 'true'
-    type: boolean
-    #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Master Nodepool'
-  - variable: nodepools.0.worker
-    default: 'true'
-    label: worker
-    type: boolean
-    #show_if: "configMode=Advanced && nodePoolTemplate=SinglePool"
-    group: 'Master Nodepool'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~ Section: Nodepool Generic Extra ~~~~~~~~~~~~~~~~~~~~~~~~
