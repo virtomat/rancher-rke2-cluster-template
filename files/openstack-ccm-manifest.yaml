@@ -195,6 +195,12 @@ spec:
           effect: NoSchedule
         - key: node.kubernetes.io/control-plane
           effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/etcd
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/etcd
+          effect: NoExecute
       hostNetwork: true
       containers:
         - name: openstack-cloud-controller-manager
