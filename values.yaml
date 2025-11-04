@@ -64,7 +64,7 @@ cluster:
     cloudCredentialSecretName: ""
 
     openstack:
-      authUrl: "https://cloud.virtomat.net:5000/v3"
+      authUrl: "https://cloud.virtomat.dev:5000/v3"
       applicationCredentialSecretName: ""  # "os-app-cred-xtpfiucyek"
       applicationCredentialName: ""
       applicationCredentialId: ""  # "e2002ed4c26c48f5abadd8b79425d3d0"
