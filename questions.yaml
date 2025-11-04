@@ -97,7 +97,7 @@ questions:
     group: 'General'
     show_if: configMode=Advanced
   - variable: cluster.config.kubernetesVersion
-    default: v1.31.13+rke2r1
+    default: v1.30.4+rke2r1
     description: 'Specify Kubernetes Version'
     label: 'Kubernetes Version'
     type: enum
