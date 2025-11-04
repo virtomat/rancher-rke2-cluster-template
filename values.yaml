@@ -76,11 +76,11 @@ cluster:
       region: RegionOne
       secGroups: default
       imageId:
-      imageName: ubuntu-22.04
+      imageName: ubuntu-24.04
       masterFlavorId:
-      masterFlavorName: m1.small
+      masterFlavorName: s1e.small
       workerFlavorId:
-      workerFlavorName: m1.medium
+      workerFlavorName: s1e.medium
       floatingipPool: office
       netId:
       netName: local-net
@@ -95,7 +95,7 @@ cluster:
     # defaultPodSecurityPolicyTemplateName:
     # enableNetworkPolicy:  # Default: false
 
-    kubernetesVersion: "v1.30.5+rke2r1"
+    kubernetesVersion: "v1.31.13+rke2r1"
 
     # enable local auth endpoint
     localClusterAuthEndpoint:
