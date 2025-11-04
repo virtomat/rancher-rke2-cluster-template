@@ -95,7 +95,7 @@ cluster:
     # defaultPodSecurityPolicyTemplateName:
     # enableNetworkPolicy:  # Default: false
 
-    kubernetesVersion: "v1.31.13+rke2r1"
+    kubernetesVersion: "v1.30.4+rke2r1"
 
     # enable local auth endpoint
     localClusterAuthEndpoint:
