@@ -97,7 +97,7 @@ questions:
     group: 'General'
     show_if: configMode=Advanced
   - variable: cluster.config.kubernetesVersion
-    default: v1.30.4+rke2r1
+    default: v1.33.5+rke2r1
     description: 'Specify Kubernetes Version'
     label: 'Kubernetes Version'
     type: enum
@@ -413,8 +413,8 @@ questions:
     default: 'm1.small'
     type: enum
     options:
-      - m1.small
-      - m1.medium
+      - s1e.small
+      - s1e.medium
     group: 'Master Nodepool'
   - variable: cluster.config.openstack.masterFlavorId
     description: 'OpenStack flavor id to use for the instance'
