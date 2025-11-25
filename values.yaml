@@ -221,8 +221,6 @@ cluster:
           service:
             enabled: true
             type: LoadBalancer
-            annotations:
-              loadbalancer.openstack.org/floating-network-id: "office"
 
 nodepools:
   - name: master
