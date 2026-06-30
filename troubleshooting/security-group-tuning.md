@@ -1,5 +1,9 @@
 # Load Balancer Operating Status ERROR - Security Group Issue
 
+> Current preferred model: pre-create a dedicated Kubernetes node security group such as `k8s-rke2` and attach it through `cluster.config.openstack.secGroups`. Treat changes to the project `default` security group as temporary Dev/debug-only workarounds.
+>
+> Scope note: this document is about the later OpenStack CCM / Octavia / `Service type=LoadBalancer` path. It is not the baseline prerequisite for the initial single-node bootstrap path, which uses the direct floating IP assigned to the bootstrap node.
+
 ## Problem Statement
 
 When creating a Kubernetes (RKE2) cluster using this Helm chart, a load balancer is automatically provisioned by OpenStack Octavia for the NGINX ingress controller. However, the load balancer shows:
@@ -41,8 +45,8 @@ This works fine for VM-to-VM communication within the same group, but breaks whe
 ### Network Architecture
 
 ```
-[User] ’ [LB VIP: 10.0.17.53] ’ [Amphora: 10.0.17.218] ’ [Worker: 10.0.17.117:30690/32169]
-                                          “
+[User] ï¿½ [LB VIP: 10.0.17.53] ï¿½ [Amphora: 10.0.17.218] ï¿½ [Worker: 10.0.17.117:30690/32169]
+                                          ï¿½
                                    Health Checks
                                    (TCP to NodePorts)
 ```
@@ -299,8 +303,8 @@ If testing as admin worked but user deployments failed, it's likely due to:
 ### Kubernetes NodePort Services
 
 Kubernetes exposes services using NodePorts (default range: 30000-32767). The NGINX ingress controller uses NodePort services:
-- Port 30690 ’ HTTP (80)
-- Port 32169 ’ HTTPS (443)
+- Port 30690 ï¿½ HTTP (80)
+- Port 32169 ï¿½ HTTPS (443)
 
 These ports are dynamically allocated and **change with each cluster deployment**, making port-specific rules impractical.
 

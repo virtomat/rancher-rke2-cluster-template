@@ -3,6 +3,14 @@
 # yamllint disable rule:braces
 
 {{- range $index, $nodepool := .Values.nodepools }}
+{{- if or (eq $index 0) (eq $.Values.nodePoolTemplate "MultiPool") }}
+{{- $poolCounts := $.Values.nodePoolCounts | default dict }}
+{{- $quantity := $nodepool.quantity }}
+{{- if eq $nodepool.name "master" }}
+{{- $quantity = (default $nodepool.quantity (index $poolCounts "master")) }}
+{{- else if eq $nodepool.name "worker" }}
+{{- $quantity = (default $nodepool.quantity (index $poolCounts "worker")) }}
+{{- end }}
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 ---
 apiVersion: rke-machine-config.cattle.io/v1
@@ -62,7 +70,7 @@ flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
   {{- end }}
 {{- end }}
 
-{{- if and (eq $nodepool.name "master") (eq ($nodepool.quantity | int) 1) }}
+{{- if and (eq $nodepool.name "master") (eq ($quantity | int) 1) }}
 floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}
 {{- end }}
 
@@ -145,4 +153,5 @@ volumeSize: "{{ $nodepool.openstackconfig.volumeSize }}"
 volumeType: {{ $nodepool.openstackconfig.volumeType }}
 {{- end }}
 
+{{- end }}
 {{- end }}
