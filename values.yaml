@@ -285,14 +285,4 @@ addons:
     # values:
     #   values here
 
-  longhorn:
-    enabled: false
-    # version: 103.2.2+up1.5.4
-    # values:
-    #   values here
 
-  neuvector:
-    enabled: false
-    # version: 103.0.2+up2.7.3
-    # values:
-    #   values here

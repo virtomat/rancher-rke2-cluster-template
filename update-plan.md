@@ -119,8 +119,8 @@ This section preserves the current cleanup analysis so work can resume in a late
   - Calls the namespace helper inside a `range` with the wrong context.
   - Likely needs root context passed explicitly.
 - Addon question paths are misaligned.
-  - `questions.yaml` writes to `monitoring.version`, `longhorn.version`, `neuvector.version`.
-  - Templates read `addons.monitoring.version`, `addons.longhorn.version`, `addons.neuvector.version`.
+  - `questions.yaml` writes to `monitoring.version`.
+  - Templates read `addons.monitoring.version`.
 - `localClusterAuthEndpoint` question paths are misaligned.
   - Questions use paths without the `cluster.config.` prefix.
   - Templates use `cluster.config.localClusterAuthEndpoint.*`.

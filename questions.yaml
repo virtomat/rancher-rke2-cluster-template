@@ -38,6 +38,7 @@ questions:
     type: labels
     description: 'Cluster labels'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.annotations
     label: 'annotations'
     type: annotations
@@ -49,6 +50,7 @@ questions:
     type: string
     description: 'Cluster Description'
     group: 'General'
+    show_if: configMode=Advanced
   - variable: cluster.config.agentEnvs
     label: 'agentEnvs'
     type: string
@@ -356,46 +358,7 @@ questions:
         description: 'Custom monitoring chart values'
         type: multiline
         group: 'Addons'
-  - variable: addons.longhorn.enabled
-    default: 'false'
-    label: 'Enable Longhorn'
-    description: 'Enable Rancher Longhorn'
-    type: boolean
-    group: 'Addons'
-    show_subquestion_if: true
-    subquestions:
-      - variable: longhorn.version
-        default:
-        label: 'Longhorn Version'
-        description: 'Choose chart version of longhorn. If empty latest version will be installed'
-        type: string
-        group: 'Addons'
-      - variable: longhorn.values
-        default:
-        label: 'Longhorn Values'
-        description: 'Custom longhorn chart values'
-        type: multiline
-        group: 'Addons'
-  - variable: addons.neuvector.enabled
-    default: 'false'
-    label: 'Enable Neuvector'
-    description: 'Enable Rancher Neuvector'
-    type: boolean
-    group: 'Addons'
-    show_subquestion_if: true
-    subquestions:
-      - variable: neuvector.version
-        default:
-        label: 'Neuvector Version'
-        description: 'Choose chart version of neuvector. If empty latest version will be installed'
-        type: string
-        group: 'Addons'
-      - variable: neuvector.values
-        default:
-        label: 'Neuvector Values'
-        description: 'Custom neuvector chart values'
-        type: multiline
-        group: 'Addons'
+
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~ Section: Master Nodepool Generic ~~~~~~~~~~~~~~~~~~~~~~~
