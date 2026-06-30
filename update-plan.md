@@ -386,3 +386,4 @@ helm upgrade --install dev-rke2-single . \
   - worker default: `s1e.medium`
   - `questions.yaml` options updated to `c1e.medium`, `s1e.small`, `s1e.medium` for master and `s1e.small`, `s1e.medium` for worker
   - removed stale `m1.small` / `m1.medium` options from worker questions
+- Hardened OpenStack credential validation so missing `applicationCredentialSecretName` now fails with an explicit Helm error instead of a nil/lookup template crash during Rancher UI submission.

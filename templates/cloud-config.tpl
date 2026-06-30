@@ -11,26 +11,26 @@ This template processes the cloud.conf file and substitutes variables from value
 
 {{/* Extract application credential ID */}}
 {{- $idFromSecret := "" }}
-{{- if and $secret (hasKey $secret.data "applicationCredentialId") }}
+{{- if and $secret $secret.data (hasKey $secret.data "applicationCredentialId") }}
 {{- $idFromSecret = $secret.data.applicationCredentialId | b64dec }}
 {{- end }}
 {{- $appCredId := coalesce $val.applicationCredentialId $idFromSecret }}
 
 {{/* Extract application credential secret */}}
 {{- $secretFromSecret := "" }}
-{{- if and $secret (hasKey $secret.data "applicationCredentialSecret") }}
+{{- if and $secret $secret.data (hasKey $secret.data "applicationCredentialSecret") }}
 {{- $secretFromSecret = $secret.data.applicationCredentialSecret | b64dec }}
 {{- end }}
 {{- $appCredSecret := coalesce $val.applicationCredentialSecret $secretFromSecret }}
 
 {{/* Extract network configuration from secret */}}
 {{- $subnetIdFromSecret := "" }}
-{{- if and $ccmNetConfigSecret (hasKey $ccmNetConfigSecret.data "subnetId") }}
+{{- if and $ccmNetConfigSecret $ccmNetConfigSecret.data (hasKey $ccmNetConfigSecret.data "subnetId") }}
 {{- $subnetIdFromSecret = $ccmNetConfigSecret.data.subnetId | b64dec }}
 {{- end }}
 
 {{- $floatingNetworkIdFromSecret := "" }}
-{{- if and $ccmNetConfigSecret (hasKey $ccmNetConfigSecret.data "floatingNetworkId") }}
+{{- if and $ccmNetConfigSecret $ccmNetConfigSecret.data (hasKey $ccmNetConfigSecret.data "floatingNetworkId") }}
 {{- $floatingNetworkIdFromSecret = $ccmNetConfigSecret.data.floatingNetworkId | b64dec }}
 {{- end }}
 

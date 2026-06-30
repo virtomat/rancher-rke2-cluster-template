@@ -26,19 +26,19 @@ activeTimeout: {{ $nodepool.openstackconfig.activeTimeout | default "200" | quot
 {{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
 applicationCredentialId: {{- if $val.applicationCredentialId }}
   {{ $val.applicationCredentialId }}
-  {{- else if and $secret $secret.data.applicationCredentialId }}
+  {{- else if and $secret $secret.data $secret.data.applicationCredentialId }}
   {{ $secret.data.applicationCredentialId | b64dec }}
   {{- end }}
 {{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
 applicationCredentialName: {{- if $val.applicationCredentialName }}
   {{ $val.applicationCredentialName }}
-  {{- else if and $secret $secret.data.applicationCredentialName }}
+  {{- else if and $secret $secret.data $secret.data.applicationCredentialName }}
   {{ $secret.data.applicationCredentialName | b64dec }}
   {{- end }}
 {{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
 applicationCredentialSecret: {{- if $val.applicationCredentialSecret }}
   {{ $val.applicationCredentialSecret }}
-  {{- else if and $secret $secret.data.applicationCredentialSecret }}
+  {{- else if and $secret $secret.data $secret.data.applicationCredentialSecret }}
   {{ $secret.data.applicationCredentialSecret | b64dec }}
   {{- end }}
 
@@ -46,8 +46,9 @@ authUrl: {{ $.Values.cluster.config.openstack.authUrl }}
 
 keypairName: {{ $.Values.cluster.config.openstack.defaultKeypairName }}
 
-{{ if lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName }}
-privateKeyFile: | {{ (lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName).data.privatekey | b64dec | nindent 4 }}
+{{- $pkSecret := lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName }}
+{{- if and $pkSecret $pkSecret.data $pkSecret.data.privatekey }}
+privateKeyFile: | {{ $pkSecret.data.privatekey | b64dec | nindent 4 }}
 {{- end }}
 
 region: {{ $.Values.cluster.config.openstack.region }}
