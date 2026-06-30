@@ -81,7 +81,7 @@ cluster:
       imageId:
       imageName: ubuntu-24.04
       masterFlavorId:
-      masterFlavorName: s1e.small
+      masterFlavorName: c1e.medium
       workerFlavorId:
       workerFlavorName: s1e.medium
       floatingipPool: office

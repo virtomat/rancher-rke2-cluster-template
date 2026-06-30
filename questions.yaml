@@ -405,9 +405,10 @@ questions:
   - variable: cluster.config.openstack.masterFlavorName
     description: 'OpenStack flavor name to use for the Master node'
     label: 'flavorName'
-    default: 'm1.small'
+    default: 'c1e.medium'
     type: enum
     options:
+      - c1e.medium
       - s1e.small
       - s1e.medium
     group: 'Master Nodepool'
@@ -643,11 +644,11 @@ questions:
   - variable: cluster.config.openstack.workerFlavorName
     description: 'OpenStack flavor name to use for the Worker node'
     label: 'flavorName'
-    default: 'm1.medium'
+    default: 's1e.medium'
     type: enum
     options:
-      - m1.small
-      - m1.medium
+      - s1e.small
+      - s1e.medium
     group: 'Worker Nodepool'
     show_if: "nodePoolTemplate=MultiPool"
   - variable: cluster.config.openstack.workerFlavorId

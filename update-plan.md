@@ -132,10 +132,10 @@ This section preserves the current cleanup analysis so work can resume in a late
   - Worker section uses `nodePoolTemplate=SinglePool`.
   - Likely should be `MultiPool`, or the section should be simplified.
 - Default drift exists between `values.yaml` and `questions.yaml`.
-  - Kubernetes version differs.
-  - OpenStack auth URL differs.
-  - Image default differs.
-  - Flavor defaults differ.
+   - Kubernetes version differs.
+   - OpenStack auth URL differs.
+   - Image default differs.
+   - Flavor defaults were aligned: master=`c1e.medium`, worker=`s1e.medium`.
 - README secret examples needed alignment.
   - `privateKeyFile` in docs did not match current template lookup of `privatekey`.
   - This has started being corrected in README.
@@ -381,3 +381,8 @@ helm upgrade --install dev-rke2-single . \
 - Documented the dedicated `k8s-rke2` security group as a validated prerequisite and clarified that default-SG changes are Dev/debug-only workarounds.
 - Created the dedicated Dev security group `k8s-rke2`, recreated the first test cluster against it, and captured the second test starting state.
 - Verified that recreating the test cluster with SG `k8s-rke2` resolved the earlier connectivity problem and produced a healthy Rancher cluster in Dev.
+- Aligned flavor defaults across `values.yaml` and `questions.yaml`:
+  - control-plane (master) default: `c1e.medium`
+  - worker default: `s1e.medium`
+  - `questions.yaml` options updated to `c1e.medium`, `s1e.small`, `s1e.medium` for master and `s1e.small`, `s1e.medium` for worker
+  - removed stale `m1.small` / `m1.medium` options from worker questions
