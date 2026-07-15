@@ -181,8 +181,8 @@ This section preserves the current cleanup analysis so work can resume in a late
 
 - Keep deployability intact during shared cleanup.
 - Use Dev as the validation target for generic improvements.
-- Dev Rancher is deployed in Kubernetes context `virt-infra-office`.
-- Dev Rancher management namespaces such as `cattle-system`, `fleet-default`, `cattle-global-data`, and user namespaces like `u-<user-suffix>` should be inspected in `virt-infra-office`.
+- Dev Rancher is deployed in Kubernetes context `virt-infra-dev-buc-hq`.
+- Dev Rancher management namespaces such as `cattle-system`, `fleet-default`, `cattle-global-data`, and user namespaces like `u-<user-suffix>` should be inspected in `virt-infra-dev-buc-hq`.
 
 ### Prod
 
@@ -195,7 +195,7 @@ This section preserves the current cleanup analysis so work can resume in a late
 
 ## Dev Inspection Findings
 
-- Active Dev context verified: `virt-infra-office`.
+- Active Dev context verified: `virt-infra-dev-buc-hq`.
 - Rancher management namespaces present: `cattle-system`, `fleet-default`, `cattle-global-data`, `u-e3r4hflh6x`.
 - Rancher pods observed ready in `cattle-system`: `rancher`, `rancher-webhook`.
 - OpenStack NodeDriver is active.
@@ -226,7 +226,7 @@ helm upgrade --install dev-rke2-single . \
 
 ## First Live Helm Test Result
 
-- Context used: `virt-infra-office`.
+- Context used: `virt-infra-dev-buc-hq`.
 - Helm release `dev-rke2-single` was installed successfully into `fleet-default`.
 - Helm release state after install: `deployed`, revision `1`.
 - Created Rancher provisioning cluster:
@@ -334,7 +334,7 @@ helm upgrade --install dev-rke2-single . \
 ### Live Read-Only Rancher Checks
 
 - Confirm current context before any inspection.
-- For Dev, expected context is `virt-infra-office`.
+- For Dev, expected context is `virt-infra-dev-buc-hq`.
 - For Prod, expected context is `virt-infra-prod-buc-hq`.
 - List namespaces matching `cattle-*`, `fleet-*`, and `u-*`.
 - Inspect existence of expected namespaces such as `fleet-default`, `cattle-global-data`, and known `u-*` user namespaces.
@@ -344,7 +344,7 @@ helm upgrade --install dev-rke2-single . \
 ## Environment Validation Order
 
 1. Static chart validation from the repo.
-2. Read-only Rancher namespace and secret-shape inspection in Dev using `virt-infra-office`.
+2. Read-only Rancher namespace and secret-shape inspection in Dev using `virt-infra-dev-buc-hq`.
 3. Dev install or upgrade validation.
 4. Merge cleaned shared baseline toward `main`.
 5. Read-only Rancher namespace and secret-shape inspection in Prod using `virt-infra-prod-buc-hq`.

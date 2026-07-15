@@ -4,7 +4,7 @@ Operator checklist for creating the validated HA RKE2 cluster from the Rancher U
 
 ## Pre-Checks
 
-- [ ] Rancher context/environment confirmed (Dev: `virt-infra-office`, Prod: `virt-infra-prod-buc-hq`)
+- [ ] Rancher context/environment confirmed (Dev: `virt-infra-dev-buc-hq`, Prod: `virt-infra-prod-buc-hq`)
 - [ ] Application credential secret exists: `os-app-cred-<suffix>` with keys `applicationCredentialId` and `applicationCredentialSecret`
 - [ ] SSH private key secret exists: `openstack-privatekey` with key `privatekey`
 - [ ] CCM network config secret exists: `os-ccm-net-config` with keys `subnetId` and `floatingNetworkId`

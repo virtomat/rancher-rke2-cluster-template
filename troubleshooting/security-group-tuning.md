@@ -78,7 +78,7 @@ $ openstack security group rule list 4e6d1d22-043d-4bca-9e37-6bbb315b2dc5 --ingr
 ### 1. List Load Balancers and Check Status
 
 ```bash
-source ~/.openstack/admin-openrc.sh
+source ./.openstack/admin-openrc-dev.sh
 openstack loadbalancer list
 ```
 
@@ -185,7 +185,7 @@ Add a security group rule to allow all TCP traffic from the load balancer subnet
 
 ```bash
 # Source admin credentials
-source ~/.openstack/admin-openrc.sh
+source ./.openstack/admin-openrc-dev.sh
 
 # Identify the user's project
 PROJECT_NAME="John.Doe-ws"  # Or use project ID directly

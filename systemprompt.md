@@ -16,7 +16,7 @@ The underlying infrastructure is OpenStack.
 You may run OpenStack CLI commands after sourcing:
 
 ```bash
-source ~/.openstack/admin-openrc.sh
+source ./.openstack/admin-openrc-dev.sh
 ```
 
 **Example allowed commands:**
