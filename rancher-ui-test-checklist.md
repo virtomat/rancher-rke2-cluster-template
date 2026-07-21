@@ -14,7 +14,9 @@ Operator checklist for creating the validated HA RKE2 cluster from the Rancher U
 
 | Setting | Expected Value |
 | :--- | :--- |
-| Kubernetes version | `v1.33.12+rke2r2` |
+| Kubernetes version | `v1.35.6+rke2r1` |
+| OpenStack CCM image | `registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0` |
+| OpenStack image | `ubuntu-24.04` |
 | `secGroups` | `k8s-rke2` |
 | `configDrive` | `true` |
 
@@ -34,7 +36,8 @@ Operator checklist for creating the validated HA RKE2 cluster from the Rancher U
 - **Advanced settings to verify** (if visible in UI):
   - `secGroups` = `k8s-rke2`
   - `configDrive` = `true`
-  - Kubernetes version = `v1.33.12+rke2r2`
+  - Kubernetes version = `v1.35.6+rke2r1`
+  - OpenStack image = `ubuntu-24.04`
 
 ## Post-Create Checkpoints
 

@@ -132,10 +132,8 @@ This section preserves the current cleanup analysis so work can resume in a late
   - Worker section uses `nodePoolTemplate=SinglePool`.
   - Likely should be `MultiPool`, or the section should be simplified.
 - Default drift exists between `values.yaml` and `questions.yaml`.
-   - Kubernetes version differs.
-   - OpenStack auth URL differs.
-   - Image default differs.
-   - Flavor defaults were aligned: master=`c1e.medium`, worker=`s1e.medium`.
+   - Kubernetes version, OpenStack authentication source, and image default were aligned at `v1.35.6+rke2r1`, the platform ConfigMap, and `ubuntu-24.04`.
+   - Flavor defaults use the parity catalog: master=`c1.medium`, worker=`s1.medium`.
 - README secret examples needed alignment.
   - `privateKeyFile` in docs did not match current template lookup of `privatekey`.
   - This has started being corrected in README.
@@ -144,11 +142,11 @@ This section preserves the current cleanup analysis so work can resume in a late
 
 ### P0: Fix Real Chart Bugs
 
-- [ ] Fix `templates/managedcharts.yaml` namespace rendering.
-- [ ] Fix `templates/clusterroletemplatebinding.yaml` root context handling.
-- [ ] Align addon question paths with `addons.*`.
-- [ ] Align `localClusterAuthEndpoint.*` question paths with values/templates.
-- [ ] Resolve defaults drift between `values.yaml` and `questions.yaml`.
+- [x] Fix `templates/managedcharts.yaml` namespace rendering.
+- [x] Fix `templates/clusterroletemplatebinding.yaml` root context handling.
+- [x] Align addon question paths with `addons.*`.
+- [x] Align `localClusterAuthEndpoint.*` question paths with values/templates.
+- [x] Resolve defaults drift between `values.yaml` and `questions.yaml`.
 
 ### P1: Shrink Rancher UI Surface
 
@@ -189,18 +187,18 @@ This section preserves the current cleanup analysis so work can resume in a late
 - Prod-specific changes start only after the shared baseline is cleaned up and merged.
 - Known likely differences include external network settings, flavors, images, and possibly storage-related behavior.
 - Prod Rancher is deployed in Kubernetes context `virt-infra-prod-buc-hq`.
-- Prod Rancher public host is `rancher.devopscentral.cloud`.
-- Prod Rancher management namespaces such as `cattle-system`, `fleet-default`, `cattle-global-data`, and user namespaces like `u-e3r4hflh6x` are expected in `virt-infra-prod-buc-hq`.
+- Prod Rancher management namespaces such as `cattle-system`, `fleet-default`, `cattle-global-data`, and user namespaces in the derived `u-<suffix>` form are expected in `virt-infra-prod-buc-hq`.
 - Prod-specific validation and patches start only after the shared baseline is cleaned up and validated in Dev.
+- The shared `c1.*`, `s1.*`, and `m1.*` workload flavors have zero local disk. Node pools must therefore boot from a 40 GiB Cinder volume; leave `volumeType` empty so each environment selects its own Cinder default.
 
 ## Dev Inspection Findings
 
 - Active Dev context verified: `virt-infra-dev-buc-hq`.
-- Rancher management namespaces present: `cattle-system`, `fleet-default`, `cattle-global-data`, `u-e3r4hflh6x`.
+- Rancher management namespaces present: `cattle-system`, `fleet-default`, `cattle-global-data`, and the derived user namespace.
 - Rancher pods observed ready in `cattle-system`: `rancher`, `rancher-webhook`.
 - OpenStack NodeDriver is active.
 - Existing user namespace secret names and key names only:
-  - `os-app-cred-e3r4hflh6x`: `applicationCredentialId`, `applicationCredentialSecret`
+  - `os-app-cred-<suffix>`: `applicationCredentialId`, `applicationCredentialSecret`
   - `openstack-privatekey`: `privatekey`
   - `os-ccm-net-config`: `subnetId`, `floatingNetworkId`
 - `test-cloud-config-f0ace93f` appears to be old chart-rendered output owned by Helm release `rke2-cluster-templates-1-1772183441` for cluster `test`; do not delete until confirmed unused.
@@ -221,7 +219,7 @@ helm upgrade --install dev-rke2-single . \
   --set cluster.name=dev-rke2-single \
   --set configMode=Simple \
   --set nodePoolTemplate=SinglePool \
-  --set cluster.config.openstack.applicationCredentialSecretName=os-app-cred-e3r4hflh6x
+  --set cluster.config.openstack.applicationCredentialSecretName=os-app-cred-<suffix>
 ```
 
 ## First Live Helm Test Result
@@ -230,7 +228,7 @@ helm upgrade --install dev-rke2-single . \
 - Helm release `dev-rke2-single` was installed successfully into `fleet-default`.
 - Helm release state after install: `deployed`, revision `1`.
 - Created Rancher provisioning cluster:
-  - `u-e3r4hflh6x/dev-rke2-single`
+  - `u-<suffix>/dev-rke2-single`
   - version `v1.30.4+rke2r1`
   - `READY` was still empty immediately after install, so provisioning was still in progress.
 - Created OpenStack machine configs:
@@ -295,8 +293,8 @@ helm upgrade --install dev-rke2-single . \
   - corrected worker OpenStack advanced subquestion gating so those fields are available in `MultiPool`
 - Kubernetes version default alignment after Rancher inspection:
   - Rancher currently advertises `rke2-default-version=1.33.12+rke2r2`
-  - chart default `cluster.config.kubernetesVersion` was updated from `v1.30.4+rke2r1` to `v1.33.12+rke2r2`
-  - Rancher questions default was updated to `v1.33.12+rke2r2`
+  - chart default `cluster.config.kubernetesVersion` is now `v1.35.6+rke2r1`
+  - Rancher questions default is now `v1.35.6+rke2r1`
   - old `v1.26` through `v1.30` options were removed from the Rancher UI version list
 - OpenStack config-drive validation after direct third-master investigation:
   - a stuck third master in the HA test fell back to `DatasourceNone`, did not inject the `ubuntu` authorized key, and never reached `rancher-system-agent` startup
@@ -382,8 +380,8 @@ helm upgrade --install dev-rke2-single . \
 - Created the dedicated Dev security group `k8s-rke2`, recreated the first test cluster against it, and captured the second test starting state.
 - Verified that recreating the test cluster with SG `k8s-rke2` resolved the earlier connectivity problem and produced a healthy Rancher cluster in Dev.
 - Aligned flavor defaults across `values.yaml` and `questions.yaml`:
-  - control-plane (master) default: `c1e.medium`
-  - worker default: `s1e.medium`
-  - `questions.yaml` options updated to `c1e.medium`, `s1e.small`, `s1e.medium` for master and `s1e.small`, `s1e.medium` for worker
-  - removed stale `m1.small` / `m1.medium` options from worker questions
+  - control-plane (master) default: `c1.medium`
+  - worker default: `s1.medium`
+  - `questions.yaml` options are `c1.small`, `c1.medium`, `c1.large` for master and `s1.small`, `s1.medium`, `s1.large` for worker
+  - the public Dev workload flavor catalog now matches Prod for these selections
 - Hardened OpenStack credential validation so missing `applicationCredentialSecretName` now fails with an explicit Helm error instead of a nil/lookup template crash during Rancher UI submission.

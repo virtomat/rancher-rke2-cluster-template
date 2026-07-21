@@ -35,9 +35,6 @@ spec:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- end }}
-  {{- if .Values.cluster.config.cloudCredentialSecretName }}
-  cloudCredentialSecretName: "cattle-global-data:{{ .Values.cluster.config.cloudCredentialSecretName }}"
-  {{- end }}
   # clusterAPIConfig:
   # clusterAgentDeploymentCustomization:
   {{- if .Values.cluster.config.defaultClusterRoleForProjectMembers }}

@@ -57,22 +57,6 @@ questions:
     description: 'Cluster agentEnvs'
     group: 'General'
     show_if: configMode=Advanced
-  - variable: cluster.config.openstack.authUrl
-    description: 'OpenStack authentication URL'
-    label: 'authUrl'
-    default: 'https://cloud.virtomat.net:5000/v3'
-    type: string
-    required: true
-    show_if: configMode=Advanced
-    group: 'General'
-  - variable: cluster.config.cloudCredentialSecretName
-    default: cc-openstack-generic
-    description: 'CloudCredentialName for provisioning cluster'
-    label: 'CloudCredential Name'
-#    type: cloudcredential
-    type: string
-    group: 'General'
-    show_if: configMode=Advanced
   - variable: cluster.config.defaultClusterRoleForProjectMembers
     label: 'defaultClusterRoleForProjectMembers'
     type: string
@@ -99,7 +83,7 @@ questions:
     group: 'General'
     show_if: configMode=Advanced
   - variable: cluster.config.kubernetesVersion
-    default: v1.33.12+rke2r2
+    default: v1.35.6+rke2r1
     description: 'Specify Kubernetes Version'
     label: 'Kubernetes Version'
     type: enum
@@ -108,6 +92,7 @@ questions:
       - v1.31.13+rke2r1
       - v1.32.9+rke2r1
       - v1.33.12+rke2r2
+      - v1.35.6+rke2r1
     group: 'General'
   - variable: cluster.config.openstack.enabled
     description: 'Show General Openstack Configs'
@@ -120,40 +105,14 @@ questions:
       - variable: cluster.config.openstack.applicationCredentialSecretName
         label: 'applicationCredentialSecretName'
         type: string
-        description: 'Secret name holding Openstack Application Credential data'
+        description: 'Onboarding-created Secret name in the form os-app-cred-<suffix>'
         required: true
-        group: 'General'
-      - variable: cluster.config.openstack.applicationCredentialId
-        label: 'applicationCredentialId'
-        type: string
-        description: 'ID value from the Openstack Application Credential'
-        show_if: configMode=Advanced
-        group: 'General'
-      - variable: cluster.config.openstack.applicationCredentialSecret
-        label: 'applicationCredentialSecret'
-        type: string
-        description: 'Secret value from the Openstack Application Credential'
-        show_if: configMode=Advanced
-        group: 'General'
-      - variable: cluster.config.openstack.defaultPrivateKey
-        description: 'File contents for privateKeyFile. It used a default private key, use your own for increased security.'
-        label: 'secretPrivateKey'
-        type: multiline
-        show_if: configMode=Advanced
-        group: 'General'
-      - variable: cluster.config.openstack.defaultKeypairName
-        description: "OpenStack keypair to use to SSH into node. By default 'bootstrap' is used, which is created during account registration."
-        default: bootstrap
-        label: 'keypairName'
-        type: string
-        required: true
-        show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.floatingipPool
-        description: 'OpenStack floating IP pool to get an IP from to assign to the instance'
+        description: 'Rancher NodeDriver floating-IP network name for instances; CCM floatingNetworkId is sourced from os-ccm-net-config'
         label: 'floatingipPool'
         type: string
-        default: 'office'
+        default: 'ext_net_gts'
         show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.imageId
@@ -166,7 +125,7 @@ questions:
         description: 'OpenStack image name to use for the instance'
         label: 'imageName'
         type: string
-        default: 'ubuntu-22.04'
+        default: 'ubuntu-24.04'
         show_if: nodePoolTemplate=SinglePool
         group: 'General'
       - variable: cluster.config.openstack.netId
@@ -180,14 +139,6 @@ questions:
         label: 'netName'
         type: string
         default: 'local-net'
-        show_if: configMode=Advanced
-        group: 'General'
-      - variable: cluster.config.openstack.region
-        description: 'OpenStack region name'
-        label: 'region'
-        default: RegionOne
-        type: string
-        required: true
         show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.secGroups
@@ -227,13 +178,13 @@ questions:
     show_if: configMode=Advanced
     show_subquestion_if: true
     subquestions:
-      - variable: localClusterAuthEndpoint.fqdn
+      - variable: cluster.config.localClusterAuthEndpoint.fqdn
         default:
         description: 'Local Auth Access Endpoint FQDN'
         label: 'Auth Endpoint FQDN'
         type: hostname
         group: 'Auth Access Endpoint'
-      - variable: localClusterAuthEndpoint.caCerts
+      - variable: cluster.config.localClusterAuthEndpoint.caCerts
         default:
         label: 'Auth Endpoint Cacerts'
         description: 'Local Auth Access Endpoint CACerts'
@@ -346,13 +297,13 @@ questions:
     group: 'Addons'
     show_subquestion_if: true
     subquestions:
-      - variable: monitoring.version
+      - variable: addons.monitoring.version
         default:
         label: 'Monitoring Version'
         description: 'Choose chart version of monitoring. If empty latest version will be installed'
         type: string
         group: 'Addons'
-      - variable: monitoring.values
+      - variable: addons.monitoring.values
         default:
         label: 'Monitoring Values'
         description: 'Custom monitoring chart values'
@@ -368,12 +319,12 @@ questions:
   - variable: cluster.config.openstack.masterFlavorName
     description: 'OpenStack flavor name to use for the Master node'
     label: 'flavorName'
-    default: 'c1e.medium'
+    default: 'c1.medium'
     type: enum
     options:
-      - c1e.medium
-      - s1e.small
-      - s1e.medium
+      - c1.small
+      - c1.medium
+      - c1.large
     group: 'Master Nodepool'
   - variable: cluster.config.openstack.masterFlavorId
     description: 'OpenStack flavor id to use for the instance'
@@ -387,6 +338,31 @@ questions:
     type: int
     default: '1'
     required: true
+    group: 'Master Nodepool'
+  - variable: nodepools.0.openstackconfig.bootFromVolume
+    description: 'Boot from a Cinder volume. Required by the zero-local-disk workload flavors; false is rejected.'
+    label: 'bootFromVolume'
+    default: 'true'
+    type: boolean
+    group: 'Master Nodepool'
+  - variable: nodepools.0.openstackconfig.configDrive
+    description: 'Enable the OpenStack config drive for reliable cloud-init bootstrap.'
+    label: 'configDrive'
+    default: 'true'
+    type: boolean
+    group: 'Master Nodepool'
+  - variable: nodepools.0.openstackconfig.volumeSize
+    description: 'Cinder boot volume size in GiB.'
+    label: 'volumeSize'
+    default: '40'
+    type: string
+    required: true
+    group: 'Master Nodepool'
+  - variable: nodepools.0.openstackconfig.volumeType
+    description: 'Optional Cinder volume type. Leave empty to use the environment default.'
+    label: 'volumeType'
+    default: ''
+    type: string
     group: 'Master Nodepool'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -454,24 +430,10 @@ questions:
         type: string
         show_if: configMode=Advanced
         group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.bootFromVolume
-        description: 'Enables Openstack instance to boot from volume as ROOT'
-        label: 'bootFromVolume'
-        default: 'true'
-        type: boolean
-        show_if: configMode=Advanced
-        group: 'Master Nodepool Extra'
       - variable: nodepools.0.openstackconfig.cacert
         description: 'File contents for cacert'
         label: 'cacert'
         type: string
-        show_if: configMode=Advanced
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.configDrive
-        description: 'Enables the OpenStack config drive for the instance'
-        label: 'configDrive'
-        default: 'true'
-        type: boolean
         show_if: configMode=Advanced
         group: 'Master Nodepool Extra'
       - variable: nodepools.0.openstackconfig.domainId
@@ -586,18 +548,6 @@ questions:
         type: string
         show_if: configMode=Advanced
         group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.volumeSize
-        description: 'OpenStack volume size (GiB) when creating a volume'
-        label: 'volumeSize'
-        type: string
-        show_if: configMode=Advanced && nodePoolTemplate=MultiPool
-        group: 'Master Nodepool Extra'
-      - variable: nodepools.0.openstackconfig.volumeType
-        description: 'OpenStack volume type (ssd, ...)'
-        label: 'volumeType'
-        type: string
-        show_if: configMode=Advanced && nodePoolTemplate=MultiPool
-        group: 'Master Nodepool Extra'
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~ Section: Worker Nodepool Generic ~~~~~~~~~~~~~~~~~~~~~~~
@@ -607,11 +557,12 @@ questions:
   - variable: cluster.config.openstack.workerFlavorName
     description: 'OpenStack flavor name to use for the Worker node'
     label: 'flavorName'
-    default: 's1e.medium'
+    default: 's1.medium'
     type: enum
     options:
-      - s1e.small
-      - s1e.medium
+      - s1.small
+      - s1.medium
+      - s1.large
     group: 'Worker Nodepool'
     show_if: "nodePoolTemplate=MultiPool"
   - variable: cluster.config.openstack.workerFlavorId
@@ -626,6 +577,35 @@ questions:
     type: int
     default: '1'
     required: true
+    group: 'Worker Nodepool'
+    show_if: "nodePoolTemplate=MultiPool"
+  - variable: nodepools.1.openstackconfig.bootFromVolume
+    description: 'Boot from a Cinder volume. Required by the zero-local-disk workload flavors; false is rejected.'
+    label: 'bootFromVolume'
+    default: 'true'
+    type: boolean
+    group: 'Worker Nodepool'
+    show_if: "nodePoolTemplate=MultiPool"
+  - variable: nodepools.1.openstackconfig.configDrive
+    description: 'Enable the OpenStack config drive for reliable cloud-init bootstrap.'
+    label: 'configDrive'
+    default: 'true'
+    type: boolean
+    group: 'Worker Nodepool'
+    show_if: "nodePoolTemplate=MultiPool"
+  - variable: nodepools.1.openstackconfig.volumeSize
+    description: 'Cinder boot volume size in GiB.'
+    label: 'volumeSize'
+    default: '40'
+    type: string
+    required: true
+    group: 'Worker Nodepool'
+    show_if: "nodePoolTemplate=MultiPool"
+  - variable: nodepools.1.openstackconfig.volumeType
+    description: 'Optional Cinder volume type. Leave empty to use the environment default.'
+    label: 'volumeType'
+    default: ''
+    type: string
     group: 'Worker Nodepool'
     show_if: "nodePoolTemplate=MultiPool"
 
@@ -694,24 +674,10 @@ questions:
         type: string
         show_if: configMode=Advanced
         group: 'Worker Nodepool Extra'
-      - variable: nodepools.1.openstackconfig.bootFromVolume
-        description: 'Enables Openstack instance to boot from volume as ROOT'
-        label: 'bootFromVolume'
-        default: 'false'
-        type: boolean
-        show_if: configMode=Advanced && nodePoolTemplate=MultiPool
-        group: 'Worker Nodepool Extra'
       - variable: nodepools.1.openstackconfig.cacert
         description: 'File contents for cacert'
         label: 'cacert'
         type: string
-        show_if: configMode=Advanced && nodePoolTemplate=MultiPool
-        group: 'Worker Nodepool Extra'
-      - variable: nodepools.1.openstackconfig.configDrive
-        description: 'Enables the OpenStack config drive for the instance'
-        label: 'configDrive'
-        default: 'false'
-        type: boolean
         show_if: configMode=Advanced && nodePoolTemplate=MultiPool
         group: 'Worker Nodepool Extra'
       - variable: nodepools.1.openstackconfig.domainId
@@ -823,18 +789,6 @@ questions:
       - variable: nodepools.1.openstackconfig.volumeName
         description: 'OpenStack volume name (creating)'
         label: 'volumeName'
-        type: string
-        show_if: configMode=Advanced && nodePoolTemplate=MultiPool
-        group: 'Worker Nodepool Extra'
-      - variable: nodepools.1.openstackconfig.volumeSize
-        description: 'OpenStack volume size (GiB) when creating a volume'
-        label: 'volumeSize'
-        type: string
-        show_if: configMode=Advanced && nodePoolTemplate=MultiPool
-        group: 'Worker Nodepool Extra'
-      - variable: nodepools.1.openstackconfig.volumeType
-        description: 'OpenStack volume type (ssd, ...)'
-        label: 'volumeType'
         type: string
         show_if: configMode=Advanced && nodePoolTemplate=MultiPool
         group: 'Worker Nodepool Extra'

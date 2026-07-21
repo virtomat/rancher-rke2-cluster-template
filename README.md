@@ -40,7 +40,9 @@ The main files to keep in sync during this work are:
 - The namespace suffix is derived from `cluster.config.openstack.applicationCredentialSecretName` using the `os-app-cred-<suffix>` naming convention.
 - MultiPool CLI overrides can set `nodePoolCounts.master` and `nodePoolCounts.worker`; `nodepools[].quantity` remains a fallback for older UI paths.
 - OpenStack node configs default `configDrive` to `true` so cloud-init can bootstrap reliably even when metadata-service discovery is inconsistent.
-- The chart default Kubernetes version is `v1.33.12+rke2r2`.
+- The zero-local-disk workload flavors boot from 40 GiB Cinder volumes by default. `volumeType` is intentionally empty so Cinder selects the target environment's default type.
+- The chart default Kubernetes version is `v1.35.6+rke2r1`; bundled OpenStack CCM is `v1.35.0`.
+- Dev and Prod use the same public workload flavor catalog. The chart defaults to `c1.medium` for control-plane nodes and `s1.medium` for workers; both flavor families have `small`, `medium`, and `large` UI options.
 - Expected input secrets in that user namespace:
   - application credential secret `os-app-cred-<suffix>` with `applicationCredentialId` and `applicationCredentialSecret`
   - SSH private key secret `openstack-privatekey` with `privatekey`
@@ -50,14 +52,24 @@ The main files to keep in sync during this work are:
   - `rke-machine-config.cattle.io/v1` `OpenstackConfig`
   - generated `<cluster-name>-cloud-config-<suffix>` Secret
   - OpenStack CCM manifest embedded in `additionalManifest`
+- `floatingipPool` is the Rancher NodeDriver floating-IP network name; CCM `floatingNetworkId` remains sourced from `os-ccm-net-config`, never hardcoded in chart values.
 - `os-ccm-net-config` is an input secret, while `<cluster-name>-cloud-config-*` is generated output.
+- The platform must provide the `rke2-openstack-environment` ConfigMap in `fleet-default` with non-empty `authUrl` and `region` keys. These values are not chart inputs and are used for both node provisioning and CCM configuration.
 - Current chart behavior is RKE2/OpenStack oriented, and the first validation path is a single-node RKE2 install in Dev.
-- `helm lint` can fail unless required values are provided or the live lookup-backed secrets already exist.
+- Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after the platform prerequisite exists.
 
 
 ## Prerequisites
 
 ### OpenStack
+
+#### Platform Environment Configuration
+
+Before installing this chart, platform operations must create
+`rke2-openstack-environment` in `fleet-default`. Its `data.authUrl` and
+`data.region` entries are required and are the sole source for the OpenStack
+authentication URL and region. Do not add these values to chart values or
+Rancher UI inputs.
 
 #### Dedicated Security Group
 
@@ -80,10 +92,6 @@ Minimum baseline rule groups for the dedicated security group for the initial si
 
 When using `all ingress from the same security group`, separate intra-cluster rules for `9345`, `2379-2380`, and `10250` are redundant because they are already covered by the self-referential rule.
 
-For the current Dev environment, the observed tenant node subnet is:
-
-- tenant node subnet: `10.0.22.0/24`
-
 If you later validate the ingress/service `LoadBalancer` path, add NodePort access on `30000-32767` from the tenant subnet used by the Kubernetes nodes and the load balancer backend path.
 
 The current chart enables `rke2-ingress-nginx` as a `LoadBalancer` service, so Octavia may become relevant later for ingress validation. It was not required to make the initial single-node Rancher/RKE2 bootstrap succeed.
@@ -101,77 +109,15 @@ See [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-
 Enable the OpenStack node driver in the Rancher Manager UI:
 - Cluster Management -> Drivers -> Node Drivers -> OpenStack -> Activate
 
-or via API:
-```yaml
----
-# Enable OpenStack node driver
-apiVersion: management.cattle.io/v3
-kind: NodeDriver
-metadata:
-  annotations:
-    io.cattle.nodedriver/ui-field-hints: >-
-      {"cacert":{"type":"multiline"},"privateKeyFile":{"type":"multiline"},"userDataFile":{"type":"multiline"}}
-    lifecycle.cattle.io/create.node-driver-controller: 'true'
-    privateCredentialFields: password
-  finalizers:
-    - controller.cattle.io/node-driver-controller
-  labels:
-    cattle.io/creator: norman
-  managedFields:
-    - apiVersion: management.cattle.io/v3
-      fieldsType: FieldsV1
-      fieldsV1:
-        f:metadata:
-          f:annotations:
-            .: {}
-            f:io.cattle.nodedriver/ui-field-hints: {}
-            f:lifecycle.cattle.io/create.node-driver-controller: {}
-            f:privateCredentialFields: {}
-          f:finalizers:
-            .: {}
-            v:"controller.cattle.io/node-driver-controller": {}
-          f:labels:
-            .: {}
-            f:cattle.io/creator: {}
-        f:spec:
-          .: {}
-          f:active: {}
-          f:addCloudCredential: {}
-          f:builtin: {}
-          f:checksum: {}
-          f:description: {}
-          f:displayName: {}
-          f:externalId: {}
-          f:uiUrl: {}
-          f:url: {}
-        f:status:
-          .: {}
-          f:appliedChecksum: {}
-          f:appliedDockerMachineVersion: {}
-          f:appliedURL: {}
-          f:conditions: {}
-      manager: rancher
-      operation: Update
-  name: openstack
-spec:
-  active: true
-  addCloudCredential: false
-  builtin: true
-  checksum: ''
-  description: ''
-  displayName: openstack
-  externalId: ''
-  uiUrl: ''
-  url: local://
-```
+The chart uses the enabled built-in driver with the onboarding application credential Secret; it does not configure an alternate Rancher credential resource.
 
 
 #### Secrets
 To use `OpenStack` as the cloud provider, you first have to create some secrets on the Rancher management cluster.
 
-The current chart logic looks up some OpenStack-related secrets from a derived namespace based on `cluster.config.openstack.applicationCredentialSecretName`. The current derivation logic expects a secret name with the prefix `os-app-cred-` and resolves the namespace as `u-<suffix>`.
+The chart derives `u-<suffix>` from `cluster.config.openstack.applicationCredentialSecretName`. This is the only authentication value entered through the chart. It must match `os-app-cred-<suffix>` exactly, and the chart fails before rendering if the required Secret or data keys are absent or empty.
 
-- For authentication via application credentials (values var: `cluster.config.openstack.applicationCredentialSecretName`) (not required when using username/password authentication):
+- The onboarding application credential Secret:
   ```yaml
   ---
   apiVersion: v1
@@ -184,7 +130,7 @@ The current chart logic looks up some OpenStack-related secrets from a derived n
     applicationCredentialSecret: <base64-encoded-application-credential-secret>
   ```
 
-- A private SSH key for Rancher to log in to the VMs that will be created through the template (values var: `cluster.config.openstack.defaultPrivateKeyFileSecretName`):
+- The onboarding SSH private-key Secret:
   ```yaml
   ---
   apiVersion: v1
@@ -196,24 +142,18 @@ The current chart logic looks up some OpenStack-related secrets from a derived n
     privatekey: <base64-encoded-private-key-file>
   ```
 
-- Cloud credentials either empty (when using application credentials) or with the `password` Rancher should use to authenticate to the OpenStack API:
+- The onboarding CCM network Secret:
   ```yaml
   ---
   apiVersion: v1
   kind: Secret
   metadata:
-    annotations:
-      provisioning.cattle.io/driver: openstack
-    labels:
-      cattle.io/creator: norman
-    name: cc-openstack-api-password
-    namespace: cattle-global-data
+    name: os-ccm-net-config
+    namespace: u-<user-suffix>
   data:
-    openstackcredentialConfig-password: ''
-    #openstackcredentialConfig-password: <base64-encoded-password>
-  type: Opaque
+    subnetId: <base64-encoded-subnet-id>
+    floatingNetworkId: <base64-encoded-floating-network-id>
   ```
-  The ID of the created cloud credentials needs to be added in `cluster.config.cloudCredentialSecretName` like `cc-openstack-api-password`.
 
 
 ### ETCD S3 backup

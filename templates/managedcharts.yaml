@@ -9,7 +9,7 @@ apiVersion: management.cattle.io/v3
 kind: ManagedChart
 metadata:
   name: monitoring-crd-{{ .Values.cluster.name }}
-  namespace: $namespace
+  namespace: {{ $namespace }}
 spec:
   chart: "rancher-monitoring-crd"
   repoName: "rancher-charts"
@@ -17,17 +17,17 @@ spec:
   version: {{ .Values.addons.monitoring.version }}
   {{- if .Values.addons.monitoring.values }}
   values:
-    {{ toYaml .Values.addons.monitoring.values }}
+{{ toYaml .Values.addons.monitoring.values | nindent 4 }}
   {{- end }}
   defaultNamespace: "cattle-monitoring-system"
   targets:
-  - clusterName: {{ .Values.cluster.name }}
+    - clusterName: {{ .Values.cluster.name }}
 ---
 apiVersion: management.cattle.io/v3
 kind: ManagedChart
 metadata:
   name: monitoring-{{ .Values.cluster.name }}
-  namespace: $namespace
+  namespace: {{ $namespace }}
 spec:
   chart: "rancher-monitoring"
   repoName: "rancher-charts"
@@ -35,7 +35,7 @@ spec:
   version: {{ .Values.addons.monitoring.version }}
   {{- if .Values.addons.monitoring.values }}
   values:
-    {{ toYaml .Values.addons.monitoring.values }}
+{{ toYaml .Values.addons.monitoring.values | nindent 4 }}
   {{- end }}
   defaultNamespace: "cattle-monitoring-system"
   targets:
@@ -51,14 +51,13 @@ spec:
         kind: ValidatingWebhookConfiguration
         name: rancher-monitoring-admission
         jsonPointers:
-        - /webhooks/0/failurePolicy
+          - /webhooks/0/failurePolicy
       - apiVersion: monitoring.coreos.com/v1
         kind: ServiceMonitor
         name: rancher-monitoring-kubelet
         namespace: kube-system
         jsonPointers:
-        - /spec/endpoints
+          - /spec/endpoints
 {{- end }}
 {{- end }}
-
 
