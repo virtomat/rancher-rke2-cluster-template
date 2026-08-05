@@ -149,24 +149,6 @@ openstack security group rule list $SG_ID --ingress
 # Look for rules with remote_ip_prefix: 10.0.17.0/24
 ```
 
-### 7. Check Octavia Logs (Optional)
-
-```bash
-# SSH to control plane node
-ssh virt-epoxy-1
-
-# Find Octavia container
-lxc-ls -f | grep octavia
-
-# Check health manager logs
-lxc-attach -n epoxy-dev-1-octavia-server-container-3aa720c0 -- \
-  journalctl -u octavia-health-manager -n 100 --no-pager
-
-# Check worker logs for errors
-lxc-attach -n epoxy-dev-1-octavia-server-container-3aa720c0 -- \
-  journalctl -u octavia-worker --since '2025-11-25 12:00' --no-pager
-```
-
 ## Solution
 
 ### The Fix: Allow Subnet Traffic
