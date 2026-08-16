@@ -2,7 +2,7 @@
 
 |    Type     | Chart Version |
 | :---------: | :-----------: |
-| application |   `1.0.1`     |
+| application |   `1.0.2`     |
 
 This repository contains a Rancher cluster template Helm chart for provisioning RKE2 clusters on OpenStack.
 
