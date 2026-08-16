@@ -385,3 +385,15 @@ helm upgrade --install dev-rke2-single . \
   - `questions.yaml` options are `c1.small`, `c1.medium`, `c1.large` for master and `s1.small`, `s1.medium`, `s1.large` for worker
   - the public Dev workload flavor catalog now matches Prod for these selections
 - Hardened OpenStack credential validation so missing `applicationCredentialSecretName` now fails with an explicit Helm error instead of a nil/lookup template crash during Rancher UI submission.
+
+### 2026-08-16
+
+- Migrated the `rke2-openstack-environment` chart lookup to the derived user
+  namespace: the chart now consumes only `u-<suffix>/rke2-openstack-environment`
+  (projected by onboarding from the canonical `fleet-default` source) and no
+  longer looks up `fleet-default`. All normal user Helm lookups are local; no
+  user `fleet-default` read access is required.
+- Fresh-user test condition: user `u-dnaaco4azl` can read local `u-dnaaco4azl`
+  objects (Secrets and `rke2-openstack-environment`) but cannot read the
+  `fleet-default` ConfigMap; a server-backed render as that user must succeed
+  using only the local ConfigMap.

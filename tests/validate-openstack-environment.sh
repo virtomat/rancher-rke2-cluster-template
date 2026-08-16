@@ -14,7 +14,7 @@ if helm template contract "$chart_dir" --namespace fleet-default \
   exit 1
 fi
 
-rg -Fq "rke2-openstack-environment ConfigMap is required" "$error_file"
+rg -Fq 'OpenStack environment ConfigMap "rke2-openstack-environment" is required in namespace "u-test"' "$error_file"
 
 helper="$chart_dir/templates/_helpers.tpl"
 node_config="$chart_dir/templates/nodeconfig-openstack.yaml"
@@ -40,8 +40,14 @@ assert_absent() {
 
 for key in authUrl region; do
   rg -Fq "hasKey \$environment.data \"$key\"" "$helper"
-  rg -Fq "rke2-openstack-environment ConfigMap requires non-empty $key" "$helper"
+  rg -Fq "OpenStack environment ConfigMap %q in namespace %q requires non-empty $key" "$helper"
 done
+
+rg -Fq 'lookup "v1" "ConfigMap" $namespace "rke2-openstack-environment"' "$helper"
+if rg -Fq 'lookup "v1" "ConfigMap" .Release.Namespace' "$helper"; then
+  printf '%s\n' "environment ConfigMap lookup must use the derived namespace, not .Release.Namespace" >&2
+  exit 1
+fi
 
 rg -Fq 'authUrl: {{ $environment.authUrl | quote }}' "$node_config"
 rg -Fq 'region: {{ $environment.region | quote }}' "$node_config"
@@ -71,7 +77,7 @@ for message in \
   rg -Fq "$message" "$helper"
 done
 
-for decoded in '\$id' '\$credentialSecret' '\$subnetId' '\$floatingNetworkId'; do
+for decoded in '$id' '$credentialSecret' '$subnetId' '$floatingNetworkId'; do
   rg -Fq "if not (trim $decoded)" "$helper"
   if rg 'fail ' "$helper" | rg -q "$decoded"; then
     printf 'Secret validation failure message exposes a decoded value variable\n' >&2

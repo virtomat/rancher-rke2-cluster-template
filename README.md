@@ -2,7 +2,7 @@
 
 |    Type     | Chart Version |
 | :---------: | :-----------: |
-| application |   `1.0.0`     |
+| application |   `1.0.1`     |
 
 This repository contains a Rancher cluster template Helm chart for provisioning RKE2 clusters on OpenStack.
 
@@ -54,9 +54,9 @@ The main files to keep in sync during this work are:
   - OpenStack CCM manifest embedded in `additionalManifest`
 - `floatingipPool` is the Rancher NodeDriver floating-IP network name; CCM `floatingNetworkId` remains sourced from `os-ccm-net-config`, never hardcoded in chart values.
 - `os-ccm-net-config` is an input secret, while `<cluster-name>-cloud-config-*` is generated output.
-- The platform must provide the `rke2-openstack-environment` ConfigMap in `fleet-default` with non-empty `authUrl` and `region` keys. These values are not chart inputs and are used for both node provisioning and CCM configuration.
+- The chart requires a local `rke2-openstack-environment` ConfigMap in the derived `u-<suffix>` namespace with non-empty `authUrl` and `region` keys. Onboarding projects the canonical `fleet-default/rke2-openstack-environment` ConfigMap into the user namespace, so the chart never reads the `fleet-default` copy. All normal user Helm lookups are therefore local, and no user `fleet-default` access is needed. These values are not chart inputs and are used for both node provisioning and CCM configuration.
 - Current chart behavior is RKE2/OpenStack oriented, and the first validation path is a single-node RKE2 install in Dev.
-- Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after the platform prerequisite exists.
+- Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after onboarding has projected the local ConfigMap into the user namespace.
 
 
 ## Prerequisites
@@ -65,11 +65,13 @@ The main files to keep in sync during this work are:
 
 #### Platform Environment Configuration
 
-Before installing this chart, platform operations must create
-`rke2-openstack-environment` in `fleet-default`. Its `data.authUrl` and
-`data.region` entries are required and are the sole source for the OpenStack
-authentication URL and region. Do not add these values to chart values or
-Rancher UI inputs.
+The canonical `rke2-openstack-environment` ConfigMap lives in `fleet-default`.
+Onboarding projects it into each user's `u-<suffix>` namespace. The chart reads
+only the local `u-<suffix>/rke2-openstack-environment` copy; it never looks up
+the `fleet-default` original, so a normal user needs no `fleet-default` read
+access. Its `data.authUrl` and `data.region` entries are required and are the
+sole source for the OpenStack authentication URL and region. Do not add these
+values to chart values or Rancher UI inputs.
 
 #### Dedicated Security Group
 

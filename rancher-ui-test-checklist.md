@@ -8,6 +8,7 @@ Operator checklist for creating the validated HA RKE2 cluster from the Rancher U
 - [ ] Application credential secret exists: `os-app-cred-<suffix>` with keys `applicationCredentialId` and `applicationCredentialSecret`
 - [ ] SSH private key secret exists: `openstack-privatekey` with key `privatekey`
 - [ ] CCM network config secret exists: `os-ccm-net-config` with keys `subnetId` and `floatingNetworkId`
+- [ ] Local environment ConfigMap exists: `u-<suffix>/rke2-openstack-environment` with keys `authUrl` and `region` (projected by onboarding from the canonical `fleet-default` copy; no `fleet-default` read access is needed)
 - [ ] Dedicated OpenStack security group `k8s-rke2` exists with required rules
 
 ## Validated Defaults

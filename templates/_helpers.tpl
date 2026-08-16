@@ -141,26 +141,29 @@ Resolve the CCM network Secret required by the onboarding contract.
 {{- end }}
 
 {{/*
-Resolve the platform-owned OpenStack environment contract for this release.
+Resolve the namespace-local OpenStack environment contract for this release.
+Onboarding projects the canonical fleet-default/rke2-openstack-environment
+ConfigMap into the derived user namespace; the chart reads only the local copy.
 */}}
 {{- define "rancher-cluster-templates.openstackEnvironment" -}}
-{{- $environment := lookup "v1" "ConfigMap" .Release.Namespace "rke2-openstack-environment" }}
+{{- $namespace := include "rancher-cluster-templates.derivedNamespace" . }}
+{{- $environment := lookup "v1" "ConfigMap" $namespace "rke2-openstack-environment" }}
 {{- if not $environment }}
-{{- fail "rke2-openstack-environment ConfigMap is required" }}
+{{- fail (printf "OpenStack environment ConfigMap %q is required in namespace %q" "rke2-openstack-environment" $namespace) }}
 {{- end }}
 {{- $authUrl := "" }}
 {{- if and $environment.data (hasKey $environment.data "authUrl") }}
 {{- $authUrl = trim (index $environment.data "authUrl") }}
 {{- end }}
 {{- if not $authUrl }}
-{{- fail "rke2-openstack-environment ConfigMap requires non-empty authUrl" }}
+{{- fail (printf "OpenStack environment ConfigMap %q in namespace %q requires non-empty authUrl" "rke2-openstack-environment" $namespace) }}
 {{- end }}
 {{- $region := "" }}
 {{- if and $environment.data (hasKey $environment.data "region") }}
 {{- $region = trim (index $environment.data "region") }}
 {{- end }}
 {{- if not $region }}
-{{- fail "rke2-openstack-environment ConfigMap requires non-empty region" }}
+{{- fail (printf "OpenStack environment ConfigMap %q in namespace %q requires non-empty region" "rke2-openstack-environment" $namespace) }}
 {{- end }}
 {{- toYaml (dict "authUrl" $authUrl "region" $region) }}
 {{- end }}
