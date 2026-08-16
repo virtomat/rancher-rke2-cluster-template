@@ -126,7 +126,7 @@ questions:
         label: 'imageName'
         type: string
         default: 'ubuntu-24.04'
-        show_if: nodePoolTemplate=SinglePool
+        show_if: configMode=Advanced
         group: 'General'
       - variable: cluster.config.openstack.netId
         description: 'OpenStack network id the machine will be connected on'

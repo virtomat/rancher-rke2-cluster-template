@@ -200,6 +200,11 @@ done
 rg -Fq 'imageName: ubuntu-24.04' "$values"
 image_question=$(rg -A 8 -F 'variable: cluster.config.openstack.imageName' "$questions")
 printf '%s\n' "$image_question" | rg -Fq "default: 'ubuntu-24.04'"
+printf '%s\n' "$image_question" | rg -Fq 'show_if: configMode=Advanced'
+if printf '%s\n' "$image_question" | rg -Fq 'show_if: nodePoolTemplate=SinglePool'; then
+  printf '%s\n' "image question must not be gated to SinglePool" >&2
+  exit 1
+fi
 assert_absent 'ubuntu-22\.04' "$values" "$questions"
 rg -Fq 'registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0' "$ccm_manifest"
 assert_absent 'openstack-cloud-controller-manager:v1\.33\.0' "$ccm_manifest"
