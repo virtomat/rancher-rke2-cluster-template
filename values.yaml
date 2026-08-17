@@ -69,6 +69,8 @@ cluster:
       sshPort: 22
       sshUser: ubuntu
       secGroups: k8s-rke2
+      # Comma-separated names without spaces; attached only to a single master.
+      publicIngressSecGroups: k8s-rke2-public-ingress
       imageId:
       imageName: ubuntu-24.04
       masterFlavorId:
@@ -76,6 +78,7 @@ cluster:
       workerFlavorId:
       workerFlavorName: s1.medium
       # Rancher NodeDriver floating-IP network name; this is not the CCM network UUID.
+      # Used only for the master nodepool when the effective master count is exactly 1.
       floatingipPool: ext_net_gts
       netId:
       netName: local-net
@@ -208,12 +211,16 @@ cluster:
     #     # skipWaitForDeleteTimeoutSeconds: 0
     #     # timeout: 120
 
+    # The rke2-ingress-nginx controller service is forced by the template from
+    # the effective master count: single master disables it (node floating IP +
+    # host ports serve ingress); HA (>=3 masters) enables it as a LoadBalancer
+    # served by CCM/Octavia. The default here matches the default single-master
+    # topology; conflicting user chartValues are overridden by that logic.
     chartValues:
       rke2-ingress-nginx:
         controller:
           service:
-            enabled: true
-            type: LoadBalancer
+            enabled: false
 
 nodepools:
   - name: master

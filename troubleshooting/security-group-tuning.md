@@ -1,8 +1,8 @@
 # Load Balancer Operating Status ERROR - Security Group Issue
 
-> Current preferred model: pre-create a dedicated Kubernetes node security group such as `k8s-rke2` and attach it through `cluster.config.openstack.secGroups`. Treat changes to the project `default` security group as temporary Dev/debug-only workarounds.
+> Current preferred model: pre-create a baseline Kubernetes node security group such as `k8s-rke2` and attach it through `cluster.config.openstack.secGroups`. The chart appends `cluster.config.openstack.publicIngressSecGroups` (default `k8s-rke2-public-ingress`) only to a single master; HA masters and workers retain the baseline group. In HA the public ingress group is never attached, and the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from the tenant subnet; public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts. Do not add public `6443` and do not alter the baseline or ingress topology behavior. Treat changes to the project `default` security group as temporary Dev/debug-only workarounds.
 >
-> Scope note: this document is about the later OpenStack CCM / Octavia / `Service type=LoadBalancer` path. It is not the baseline prerequisite for the initial single-node bootstrap path, which uses the direct floating IP assigned to the bootstrap node.
+> Scope note: this document is about the OpenStack CCM / Octavia / `Service type=LoadBalancer` path used by HA clusters (3+ masters). In HA, no node floating IPs are assigned; external addresses are allocated by Octavia for LoadBalancer services via the CCM network Secret. Single-master clusters instead give the master node a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), schedule the packaged `rke2-ingress-nginx` controller on that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, and disable its Service. The single-master public ingress group needs only TCP `80` and `443` from intended client CIDRs; it does not use the LoadBalancer path covered here.
 
 ## Problem Statement
 
@@ -299,6 +299,8 @@ OpenStack Octavia creates a **unique security group per load balancer** with nam
 
 This is why **subnet-based rules** are the recommended approach for Kubernetes integration.
 
+In the current HA model the CCM keeps its per-LB security-group management disabled: the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. Amphora-to-member reachability is provided exclusively by the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from the tenant subnet.
+
 ### Network Isolation
 
 The subnet `10.0.17.0/24` (`local-net`) is:
@@ -317,6 +319,7 @@ To prevent this issue in future cluster deployments:
 3. **Automate in Terraform/Ansible** if using infrastructure-as-code
 4. **Create cluster templates** with pre-configured security groups
 5. **Use dedicated security groups** for Kubernetes workers (Option 1 above)
+6. **Keep the CCM security-group management disabled** in HA: the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` groups. The onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet is the single source of amphora-to-member reachability, and the public ingress group is never attached in HA.
 
 ## Related Issues
 

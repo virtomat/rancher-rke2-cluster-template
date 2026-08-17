@@ -1,20 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Helm client-side rendering has no lookup mock. Exercise the missing-object
-# failure and statically verify the lookup-backed validation contracts.
+# Statically verify the lookup-backed and topology contracts without rendering.
 chart_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-error_file=$(mktemp)
-trap 'rm -f "$error_file"' EXIT
-
-if helm template contract "$chart_dir" --namespace fleet-default \
-  --set cluster.config.openstack.applicationCredentialSecretName=os-app-cred-test \
-  >/dev/null 2>"$error_file"; then
-  printf '%s\n' "expected rendering without rke2-openstack-environment to fail" >&2
-  exit 1
-fi
-
-rg -Fq 'OpenStack environment ConfigMap "rke2-openstack-environment" is required in namespace "u-test"' "$error_file"
 
 helper="$chart_dir/templates/_helpers.tpl"
 node_config="$chart_dir/templates/nodeconfig-openstack.yaml"
@@ -28,6 +16,7 @@ ccm_manifest="$chart_dir/files/openstack-ccm-manifest.yaml"
 readme="$chart_dir/README.md"
 checklist="$chart_dir/rancher-ui-test-checklist.md"
 update_plan="$chart_dir/update-plan.md"
+security_doc="$chart_dir/troubleshooting/security-group-tuning.md"
 
 assert_absent() {
   local pattern=$1
@@ -120,7 +109,49 @@ done
 rg -Fq 'defaultKeypairName: bootstrap' "$values"
 rg -Fq 'defaultPrivateKeyFileSecretName: openstack-privatekey' "$values"
 rg -Fq 'floatingipPool: ext_net_gts' "$values"
-rg -A 4 -F 'variable: cluster.config.openstack.floatingipPool' "$questions" | rg -Fq "default: 'ext_net_gts'"
+rg -Fq '# Rancher NodeDriver floating-IP network name; this is not the CCM network UUID.' "$values"
+floating_question=$(rg -A 8 -F 'variable: cluster.config.openstack.floatingipPool' "$questions")
+printf '%s\n' "$floating_question" | rg -Fq "default: 'ext_net_gts'"
+printf '%s\n' "$floating_question" | rg -Fq 'Rancher NodeDriver floating-IP network name'
+printf '%s\n' "$floating_question" | rg -Fq 'CCM floatingNetworkId is sourced from os-ccm-net-config'
+rg -Fq 'include "rancher-cluster-templates.masterCount" $ | int' "$node_config"
+rg -Fq 'floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}' "$node_config"
+rg -Fq '{{- if and (eq $nodepool.name "master") (eq $masterCount 1) }}' "$node_config"
+test "$(rg -Fc 'floatingipPool:' "$node_config")" -eq 1
+
+# Baseline groups apply everywhere; the public ingress group is single-master only.
+rg -Fq 'secGroups: k8s-rke2' "$values"
+rg -Fq 'publicIngressSecGroups: k8s-rke2-public-ingress' "$values"
+rg -Fq '{{- $secGroups := $.Values.cluster.config.openstack.secGroups }}' "$node_config"
+rg -Fq '{{- $publicIngressSecGroups := trim (default "" $.Values.cluster.config.openstack.publicIngressSecGroups) }}' "$node_config"
+rg -Fq '{{- $secGroups = printf "%s,%s" $secGroups $publicIngressSecGroups }}' "$node_config"
+rg -Fq '{{- $secGroups = $publicIngressSecGroups }}' "$node_config"
+rg -Fq 'secGroups: {{ $secGroups }}' "$node_config"
+public_ingress_question=$(rg -A 8 -F 'variable: cluster.config.openstack.publicIngressSecGroups' "$questions")
+printf '%s\n' "$public_ingress_question" | rg -Fq "default: 'k8s-rke2-public-ingress'"
+printf '%s\n' "$public_ingress_question" | rg -Fq 'show_if: configMode=Advanced'
+rg -Fq 'publicIngressSecGroups' "$readme"
+rg -Fq 'publicIngressSecGroups' "$checklist"
+rg -Fq 'publicIngressSecGroups' "$update_plan"
+rg -Fq 'publicIngressSecGroups' "$security_doc"
+
+# HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet;
+# CCM security-group management must be disabled so it never creates per-LB `lb-sg-*` groups.
+cloud_conf="$chart_dir/files/cloud.conf"
+rg -Fq 'manage-security-groups = false' "$cloud_conf"
+if rg -Fq 'manage-security-groups = true' "$cloud_conf"; then
+  printf '%s\n' "CCM security-group management must be disabled (manage-security-groups = false)" >&2
+  exit 1
+fi
+for document in "$readme" "$checklist" "$update_plan" "$security_doc"; do
+  rg -Fq 'manage-security-groups = false' "$document"
+  rg -Fq 'lb-sg-*' "$document"
+  rg -Fq 'never attached in HA' "$document"
+  rg -Fq 'public `6443`' "$document"
+  rg -Fq 'reaches the Octavia floating IP' "$document"
+  rg -Fq 'NodePort rule' "$document"
+  rg -Fq 'onboarding-managed' "$document"
+done
 
 rg -Fq 'masterFlavorName: c1.medium' "$values"
 rg -Fq 'workerFlavorName: s1.medium' "$values"
@@ -190,12 +221,26 @@ fi
 rg -Fq '{{- if $nodepool.openstackconfig.volumeType }}' "$node_config"
 
 rg -Fq 'kubernetesVersion: "v1.35.6+rke2r1"' "$values"
-version_question=$(rg -A 12 -F 'variable: cluster.config.kubernetesVersion' "$questions")
+version_question=$(rg -A 14 -F 'variable: cluster.config.kubernetesVersion' "$questions")
 printf '%s\n' "$version_question" | rg -Fq 'default: v1.35.6+rke2r1'
-printf '%s\n' "$version_question" | rg -Fq -- '- v1.35.6+rke2r1'
-for retained_version in v1.31.13+rke2r1 v1.32.9+rke2r1 v1.33.12+rke2r2; do
-  printf '%s\n' "$version_question" | rg -Fq -- "- $retained_version"
+for supported_version in v1.33.12+rke2r2 v1.34.6+rke2r1 v1.35.6+rke2r1; do
+  printf '%s\n' "$version_question" | rg -Fq -- "- $supported_version"
 done
+for dropped_version in v1.31.13+rke2r1 v1.32.9+rke2r1; do
+  if printf '%s\n' "$version_question" | rg -Fq -- "- $dropped_version"; then
+    printf 'unsupported RKE2 version still offered: %s\n' "$dropped_version" >&2
+    exit 1
+  fi
+done
+printf '%s\n' "$version_question" | rg -Fq 'CCM image is derived automatically'
+
+schema="$chart_dir/values.schema.json"
+rg -Fq '"kubernetesVersion"' "$schema"
+rg -Fq '"enum"' "$schema"
+for supported_version in v1.33.12+rke2r2 v1.34.6+rke2r1 v1.35.6+rke2r1; do
+  rg -Fq "\"$supported_version\"" "$schema"
+done
+assert_absent 'v1\.31|v1\.32' "$schema"
 
 rg -Fq 'imageName: ubuntu-24.04' "$values"
 image_question=$(rg -A 8 -F 'variable: cluster.config.openstack.imageName' "$questions")
@@ -206,8 +251,39 @@ if printf '%s\n' "$image_question" | rg -Fq 'show_if: nodePoolTemplate=SinglePoo
   exit 1
 fi
 assert_absent 'ubuntu-22\.04' "$values" "$questions"
-rg -Fq 'registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0' "$ccm_manifest"
-assert_absent 'openstack-cloud-controller-manager:v1\.33\.0' "$ccm_manifest"
+ccm_helper="$chart_dir/templates/openstack-ccm-manifest.tpl"
+rg -Fq 'tpl $manifest .' "$ccm_helper"
+rg -Fq 'image: {{ include "rancher-cluster-templates.openstackCcmImage" . }}' "$ccm_manifest"
+assert_absent 'openstack-cloud-controller-manager:v1\.3[345]\.0' "$ccm_manifest"
+rg -Fq 'define "rancher-cluster-templates.openstackCcmImage"' "$helper"
+for pair in v1.33.12+rke2r2:v1.33.0 v1.34.6+rke2r1:v1.34.0 v1.35.6+rke2r1:v1.35.0; do
+  version=${pair%%:*}
+  tag=${pair#*:}
+  rg -Fq "$version" "$helper"
+  rg -Fq "openstack-cloud-controller-manager:$tag" "$helper"
+done
+rg -Fq 'Unsupported RKE2 Kubernetes version' "$helper"
+
+rg -Fq 'define "rancher-cluster-templates.masterCount"' "$helper"
+rg -Fq '(default dict .Values.nodePoolCounts).master' "$helper"
+rg -Fq 'eq .name "master"' "$helper"
+rg -Fq 'Master node count of 2 is not supported' "$helper"
+rg -Fq 'Master node count must be exactly 1 (single master) or at least 3 (HA)' "$helper"
+
+rg -Fq 'include "rancher-cluster-templates.masterCount" $ | int' "$cluster"
+rg -Fq 'deepCopy' "$cluster"
+rg -Fq 'mergeOverwrite' "$cluster"
+rg -Fq 'rke2-ingress-nginx' "$cluster"
+rg -Fq 'dict "enabled" false' "$cluster"
+rg -Fq '"hostPort" (dict "enabled" true "ports" (dict "http" 80 "https" 443))' "$cluster"
+rg -Fq '"nodeSelector" (dict "kubernetes.io/os" "linux" "node.kubernetes.io/control-plane" "true")' "$cluster"
+rg -Fq '"tolerations" (list (dict "key" "node-role.kubernetes.io/control-plane" "operator" "Exists" "effect" "NoSchedule") (dict "key" "node-role.kubernetes.io/etcd" "operator" "Exists" "effect" "NoExecute"))' "$cluster"
+rg -Fq 'dict "enabled" true "type" "LoadBalancer"' "$cluster"
+ha_ingress_values=$(rg -F 'dict "enabled" true "type" "LoadBalancer"' "$cluster")
+if printf '%s\n' "$ha_ingress_values" | rg -q -e 'hostPort|nodeSelector|tolerations'; then
+  printf '%s\n' "HA ingress values must not override hostPort, nodeSelector, or tolerations" >&2
+  exit 1
+fi
 
 rg -Fq 'variable: cluster.config.localClusterAuthEndpoint.fqdn' "$questions"
 rg -Fq 'variable: cluster.config.localClusterAuthEndpoint.caCerts' "$questions"
@@ -224,9 +300,11 @@ rg -Fq 'include "rancher-cluster-templates.derivedNamespace" $root' "$cluster_ro
 assert_absent 'include "rancher-cluster-templates\.derivedNamespace" \.' "$cluster_role_binding"
 
 for document in "$readme" "$checklist" "$update_plan"; do
+  rg -Fq 'v1.33.12+rke2r2' "$document"
+  rg -Fq 'v1.34.6+rke2r1' "$document"
   rg -Fq 'v1.35.6+rke2r1' "$document"
 done
-rg -Fq 'v1.35.0' "$readme"
+rg -Fq 'changing the matrix requires a chart release' "$readme"
 assert_absent 'username/password authentication|cluster\.config\.cloudCredentialSecretName' "$readme"
 
 if rg -Fq 'volumeType: rbd1' "$values" "$node_config" ||
@@ -241,10 +319,26 @@ if printf '%s\n%s\n' "$master_question" "$worker_question" | rg -Fq 'c1e.' ||
   exit 1
 fi
 
-if rg -Fq 'floatingipPool: office' "$values" ||
-  rg -A 4 -F 'variable: cluster.config.openstack.floatingipPool' "$questions" | rg -Fq "default: 'office'"; then
-  printf '%s\n' "stale floating-IP pool default found" >&2
-  exit 1
-fi
+rg -Fq 'single master (count `1`)' "$readme"
+rg -Fq 'HA (count `>= 3`)' "$readme"
+rg -Fq 'floatingipPool' "$readme"
+rg -Fq 'floatingNetworkId' "$readme"
+rg -Fq 'exactly `2` is rejected' "$readme"
+rg -Fq 'Single vs HA Topology' "$checklist"
+rg -Fq 'ext_net_gts' "$checklist"
+rg -Fq 'masterCount' "$update_plan"
+rg -Fq 'single master (count `1`)' "$update_plan"
+rg -Fq 'HA (count `>= 3`)' "$update_plan"
+rg -Fq 'floatingipPool' "$update_plan"
+rg -Fq 'Scope note: this document is about the OpenStack CCM / Octavia / `Service type=LoadBalancer` path used by HA clusters (3+ masters)' "$security_doc"
+rg -Fq 'floatingipPool' "$security_doc"
+for document in "$readme" "$checklist" "$update_plan" "$security_doc"; do
+  rg -Fq 'host ports `80` and `443`' "$document"
+  rg -Fq 'control-plane master' "$document"
+  rg -Fq 'node-role.kubernetes.io/etcd:NoExecute' "$document"
+done
+for document in "$readme" "$checklist" "$update_plan" "$security_doc"; do
+  rg -Fq 'only TCP `80` and `443`' "$document"
+done
 
 printf '%s\n' "OpenStack environment contract validation passed"

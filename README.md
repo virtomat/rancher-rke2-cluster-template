@@ -2,7 +2,7 @@
 
 |    Type     | Chart Version |
 | :---------: | :-----------: |
-| application |   `1.0.3`     |
+| application |   `1.0.4`     |
 
 This repository contains a Rancher cluster template Helm chart for provisioning RKE2 clusters on OpenStack.
 
@@ -41,7 +41,7 @@ The main files to keep in sync during this work are:
 - MultiPool CLI overrides can set `nodePoolCounts.master` and `nodePoolCounts.worker`; `nodepools[].quantity` remains a fallback for older UI paths.
 - OpenStack node configs default `configDrive` to `true` so cloud-init can bootstrap reliably even when metadata-service discovery is inconsistent.
 - The zero-local-disk workload flavors boot from 40 GiB Cinder volumes by default. `volumeType` is intentionally empty so Cinder selects the target environment's default type.
-- The chart default Kubernetes version is `v1.35.6+rke2r1`; bundled OpenStack CCM is `v1.35.0`.
+- The chart supports exactly three validated RKE2 releases: `v1.33.12+rke2r2`, `v1.34.6+rke2r1`, and `v1.35.6+rke2r1` (default). The bundled OpenStack CCM image is derived automatically from the selected version (`v1.33.0`, `v1.34.0`, `v1.35.0` respectively) and is not user configurable; changing the matrix requires a chart release and validation.
 - Dev and Prod use the same public workload flavor catalog. The chart defaults to `c1.medium` for control-plane nodes and `s1.medium` for workers; both flavor families have `small`, `medium`, and `large` UI options.
 - Expected input secrets in that user namespace:
   - application credential secret `os-app-cred-<suffix>` with `applicationCredentialId` and `applicationCredentialSecret`
@@ -52,7 +52,11 @@ The main files to keep in sync during this work are:
   - `rke-machine-config.cattle.io/v1` `OpenstackConfig`
   - generated `<cluster-name>-cloud-config-<suffix>` Secret
   - OpenStack CCM manifest embedded in `additionalManifest`
-- `floatingipPool` is the Rancher NodeDriver floating-IP network name; CCM `floatingNetworkId` remains sourced from `os-ccm-net-config`, never hardcoded in chart values.
+- Floating-IP and ingress topology is selected by the effective master count (`nodePoolCounts.master`, falling back to the `master` nodepool `quantity`):
+  - single master (count `1`): the master `OpenstackConfig` renders `floatingipPool` (default `ext_net_gts`) and appends `publicIngressSecGroups` to the baseline `secGroups`; the packaged `rke2-ingress-nginx` controller is forced onto that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is disabled
+  - HA (count `>= 3`): no node floating IPs are assigned; the packaged `rke2-ingress-nginx` controller service is forced to `enabled: true` with `type: LoadBalancer`, and external addresses are allocated by OpenStack CCM/Octavia from `os-ccm-net-config.floatingNetworkId`. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet, so the generated `cloud.conf` sets `manage-security-groups = false` and the CCM must not create per-LB `lb-sg-*` security groups; the public ingress group is never attached in HA, and public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts
+  - a master count of exactly `2` is rejected at render time with a clear error
+- Worker `OpenstackConfig` objects never render `floatingipPool`; worker nodes stay on the private tenant network (`netName`, default `local-net`).
 - `os-ccm-net-config` is an input secret, while `<cluster-name>-cloud-config-*` is generated output.
 - The chart requires a local `rke2-openstack-environment` ConfigMap in the derived `u-<suffix>` namespace with non-empty `authUrl` and `region` keys. Onboarding projects the canonical `fleet-default/rke2-openstack-environment` ConfigMap into the user namespace, so the chart never reads the `fleet-default` copy. All normal user Helm lookups are therefore local, and no user `fleet-default` access is needed. These values are not chart inputs and are used for both node provisioning and CCM configuration.
 - Current chart behavior is RKE2/OpenStack oriented, and the first validation path is a single-node RKE2 install in Dev.
@@ -79,31 +83,35 @@ This chart expects a pre-created OpenStack security group for Kubernetes nodes.
 
 - Recommended name: `k8s-rke2`
 - Default chart value: `cluster.config.openstack.secGroups=k8s-rke2`
+- Baseline `secGroups` attach to every master and worker pool. The default `cluster.config.openstack.publicIngressSecGroups=k8s-rke2-public-ingress` is appended only to the `master` pool when the effective master count is `1`; set it empty to attach no public ingress group. In HA (`>= 3` masters) the public ingress group is never attached.
 - Helm can attach named security groups to the node definition, but it does not create OpenStack security groups or rules.
 
-For the current first-layer validation path, the important distinction is:
+For the current validation paths, the important distinction is:
 
-- single-node bootstrap/control-plane access uses the direct floating IP assigned to the bootstrap node
-- later Kubernetes `Service` objects of type `LoadBalancer` may rely on OpenStack CCM and Octavia
+- single master: the master node receives a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), receives the public ingress group in addition to the baseline group, and runs the packaged `rke2-ingress-nginx` controller on the control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is disabled
+- HA (3+ masters): no node floating IPs are assigned; the packaged `rke2-ingress-nginx` controller runs as a `LoadBalancer` service, and OpenStack CCM/Octavia allocate the external address through the `os-ccm-net-config` network Secret (`floatingNetworkId`). HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet; the generated `cloud.conf` sets `manage-security-groups = false`, the CCM must not create per-LB `lb-sg-*` security groups, and the public ingress group is never attached in HA. Public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts.
 
-Minimum baseline rule groups for the dedicated security group for the initial single-node bootstrap path are:
+Minimum baseline rule groups for the dedicated security group for the single-master bootstrap path are:
 
 - all egress
 - all ingress from the same security group
-- Kubernetes API access on `6443` from the required management or admin source CIDRs
+
+The single-master public ingress group needs only TCP `80` and `443` from the intended client CIDRs. Do not add other public ports to that group.
 
 When using `all ingress from the same security group`, separate intra-cluster rules for `9345`, `2379-2380`, and `10250` are redundant because they are already covered by the self-referential rule.
 
-If you later validate the ingress/service `LoadBalancer` path, add NodePort access on `30000-32767` from the tenant subnet used by the Kubernetes nodes and the load balancer backend path.
+For the HA ingress/`Service type=LoadBalancer` path, the onboarding-managed static `k8s-rke2` security group is the only group attached to the nodes and provides the NodePort rule (`30000-32767`) from the tenant subnet used by the Kubernetes nodes and the Octavia backend path. HA relies on that onboarding-managed rule; the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. The public ingress group (`k8s-rke2-public-ingress`) is never attached in HA. Public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts via the amphora. Do not add public `6443` and do not alter the baseline or ingress topology behavior described here.
 
-The current chart enables `rke2-ingress-nginx` as a `LoadBalancer` service, so Octavia may become relevant later for ingress validation. It was not required to make the initial single-node Rancher/RKE2 bootstrap succeed.
+The chart's `rke2-ingress-nginx` controller behavior depends on topology: single master schedules it on the control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while disabling its Service; HA (3+ masters) enables it as a `LoadBalancer` service without the single-master host-port, selector, or toleration overrides. Octavia is therefore relevant for HA ingress validation and not for the single-master bootstrap path.
+
+When deleting an HA cluster, retain the Octavia load balancer and floating-IP IDs before removing the Rancher cluster. CCM can exit before it reconciles the `LoadBalancer` Service deletion, leaving those cloud resources behind. Delete any retained test-owned health monitors and members, cascade-delete the load balancer, then delete its floating IP; do not delete unrelated tenant resources.
 
 For temporary Dev debugging only, it can also be useful to allow:
 
 - SSH on `22`
-- direct API access on `6443`
+- direct API access on `6443` (single-master bootstrap only)
 
-Those temporary debug rules should be treated as Dev-only and tightened or removed later.
+Those temporary debug rules should be treated as Dev-only and tightened or removed later. Do not add public `6443` for the HA path, and do not alter the baseline or ingress topology behavior described here.
 
 See [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md) for background and examples.
 

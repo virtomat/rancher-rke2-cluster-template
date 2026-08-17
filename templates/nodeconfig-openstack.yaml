@@ -4,15 +4,9 @@
 
 {{- $environment := include "rancher-cluster-templates.openstackEnvironment" $ | fromYaml }}
 {{- $applicationCredential := include "rancher-cluster-templates.applicationCredential" $ | fromYaml }}
+{{- $masterCount := include "rancher-cluster-templates.masterCount" $ | int }}
 {{- range $index, $nodepool := .Values.nodepools }}
 {{- if or (eq $index 0) (eq $.Values.nodePoolTemplate "MultiPool") }}
-{{- $poolCounts := $.Values.nodePoolCounts | default dict }}
-{{- $quantity := $nodepool.quantity }}
-{{- if eq $nodepool.name "master" }}
-{{- $quantity = (default $nodepool.quantity (index $poolCounts "master")) }}
-{{- else if eq $nodepool.name "worker" }}
-{{- $quantity = (default $nodepool.quantity (index $poolCounts "worker")) }}
-{{- end }}
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 ---
 apiVersion: rke-machine-config.cattle.io/v1
@@ -47,7 +41,18 @@ privateKeyFile: | {{ $privateKey | nindent 4 }}
 
 region: {{ $environment.region | quote }}
 
-secGroups: {{ $.Values.cluster.config.openstack.secGroups }}
+{{- $secGroups := $.Values.cluster.config.openstack.secGroups }}
+{{- if and (eq $nodepool.name "master") (eq $masterCount 1) }}
+  {{- $publicIngressSecGroups := trim (default "" $.Values.cluster.config.openstack.publicIngressSecGroups) }}
+  {{- if $publicIngressSecGroups }}
+    {{- if $secGroups }}
+      {{- $secGroups = printf "%s,%s" $secGroups $publicIngressSecGroups }}
+    {{- else }}
+      {{- $secGroups = $publicIngressSecGroups }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+secGroups: {{ $secGroups }}
 
 sshPort: {{ $.Values.cluster.config.openstack.sshPort | quote}}
 
@@ -65,7 +70,7 @@ flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
   {{- end }}
 {{- end }}
 
-{{- if and (eq $nodepool.name "master") (eq ($quantity | int) 1) }}
+{{- if and (eq $nodepool.name "master") (eq $masterCount 1) }}
 floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}
 {{- end }}
 

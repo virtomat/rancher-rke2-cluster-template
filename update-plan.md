@@ -296,6 +296,21 @@ helm upgrade --install dev-rke2-single . \
   - chart default `cluster.config.kubernetesVersion` is now `v1.35.6+rke2r1`
   - Rancher questions default is now `v1.35.6+rke2r1`
   - old `v1.26` through `v1.30` options were removed from the Rancher UI version list
+- Multi-version RKE2/OpenStack CCM compatibility matrix after user decision:
+  - the chart supports exactly three tested RKE2 releases: `v1.33.12+rke2r2`, `v1.34.6+rke2r1`, and `v1.35.6+rke2r1` (default)
+  - RKE2 `1.31` and `1.32` are no longer offered
+  - the OpenStack CCM image is derived automatically from the selected version (`v1.33.0`, `v1.34.0`, `v1.35.0` respectively) via a helper and is not user configurable
+  - `values.schema.json` restricts `cluster.config.kubernetesVersion` to exactly the matrix; changing the matrix requires a chart release and validation
+- Topology-aware floating-IP and ingress handling (replaces the interim all-FIP removal):
+  - the original live Dev failure happened because Rancher attempted to allocate a bootstrap floating IP from the `ext_net_gts` pool for a multi-master (HA) cluster
+  - effective master count is resolved by a new `rancher-cluster-templates.masterCount` helper: `nodePoolCounts.master` when non-empty/non-zero, else the `master` nodepool `quantity`; a count of exactly `2` fails rendering with a clear message, and any count other than `1` or `>= 3` is rejected
+  - single master (count `1`): the master `OpenstackConfig` renders `floatingipPool` (default `ext_net_gts`) so the node gets a direct floating IP; the packaged `rke2-ingress-nginx` controller Service is forced to `enabled: false`, while the controller is selected onto the control-plane master, tolerates `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, and serves host ports `80` and `443` via the node floating IP
+  - HA (count `>= 3`): no node floating IPs; the packaged `rke2-ingress-nginx` controller Service is forced to `enabled: true` with `type: LoadBalancer` and has no single-master host-port, selector, or toleration override; external addresses are allocated by OpenStack CCM/Octavia from `os-ccm-net-config` (`floatingNetworkId`)
+   - workers never render `floatingipPool`; they stay on the private tenant network (`local-net`)
+   - `cluster.config.openstack.floatingipPool` (default `ext_net_gts`) and its Rancher question are restored as the single-master node floating-IP network
+    - baseline `cluster.config.openstack.secGroups` remains attached to all node pools; `cluster.config.openstack.publicIngressSecGroups` (default `k8s-rke2-public-ingress`) is appended only to a single master and permits only TCP `80` and `443` publicly
+    - CCM `floatingNetworkId` and `cloud.conf` were unchanged by the topology work; `manage-security-groups` was later set to `false` under the 2026-08-17 HA security-group contract
+   - Dev 3-master/1-worker revalidation with `manage-security-groups=false` succeeded: all nodes used only the baseline group, the worker alone was an ONLINE Octavia backend, public HTTP/HTTPS returned ingress `404`, and no tenant `lb-sg-*` group was created. Helm cluster deletion still left the Octavia LB and FIP after CCM exited, so test cleanup explicitly removed their monitors, members, LB, and FIP.
 - OpenStack config-drive validation after direct third-master investigation:
   - a stuck third master in the HA test fell back to `DatasourceNone`, did not inject the `ubuntu` authorized key, and never reached `rancher-system-agent` startup
   - a ready master from the same cluster used `DatasourceOpenStackLocal [net,ver=2]`, injected the authorized key, and completed bootstrap normally
@@ -397,3 +412,16 @@ helm upgrade --install dev-rke2-single . \
   objects (Secrets and `rke2-openstack-environment`) but cannot read the
   `fleet-default` ConfigMap; a server-backed render as that user must succeed
   using only the local ConfigMap.
+
+### 2026-08-17
+
+- HA security-group contract with onboarding-managed static rules (user decision
+  `manage-security-groups=false`):
+  - the generated `cloud.conf` now sets `manage-security-groups = false`; the CCM must not
+    create per-LB `lb-sg-*` security groups.
+  - HA relies on the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from
+    the tenant subnet for Octavia amphora-to-member reachability.
+  - the public ingress group (`k8s-rke2-public-ingress`) is never attached in HA; it remains
+    single-master only.
+  - public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts.
+  - do not add public `6443` and do not alter the baseline or ingress topology behavior.

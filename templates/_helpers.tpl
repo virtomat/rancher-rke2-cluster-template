@@ -169,6 +169,50 @@ ConfigMap into the derived user namespace; the chart reads only the local copy.
 {{- end }}
 
 {{/*
+Map the selected RKE2 Kubernetes version to the exact matching OpenStack CCM
+image. The CCM image is derived from the RKE2 version and is not user
+configurable. Supported versions are exactly the validated matrix; any other
+version fails rendering with a clear error. Changing the matrix requires a
+chart release and validation.
+*/}}
+{{- define "rancher-cluster-templates.openstackCcmImage" -}}
+{{- $version := .Values.cluster.config.kubernetesVersion -}}
+{{- $ccmImages := dict "v1.33.12+rke2r2" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.33.0" "v1.34.6+rke2r1" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.34.0" "v1.35.6+rke2r1" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0" -}}
+{{- if not (hasKey $ccmImages $version) -}}
+{{- fail (printf "Unsupported RKE2 Kubernetes version %q; supported versions are v1.33.12+rke2r2, v1.34.6+rke2r1, v1.35.6+rke2r1 (changing the matrix requires a chart release and validation)" $version) -}}
+{{- end -}}
+{{- index $ccmImages $version -}}
+{{- end -}}
+
+{{/*
+Resolve the effective master node count used to select the cluster topology.
+`nodePoolCounts.master` wins when set to a non-empty, non-zero value; otherwise
+the `nodepools` item named `master` provides its `quantity`. The chart supports
+exactly one master (single master) or three or more masters (HA). A count of
+exactly two is not supported and fails rendering with a clear message.
+*/}}
+{{- define "rancher-cluster-templates.masterCount" -}}
+{{- $poolCount := (default dict .Values.nodePoolCounts).master | default "" -}}
+{{- $count := 0 -}}
+{{- if and (ne (toString $poolCount) "") (ne (toString $poolCount) "0") -}}
+{{- $count = $poolCount | int -}}
+{{- else -}}
+{{- range .Values.nodepools -}}
+{{- if eq .name "master" -}}
+{{- $count = .quantity | default 0 | int -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if eq $count 2 -}}
+{{- fail "Master node count of 2 is not supported; use exactly 1 (single master) or at least 3 (HA)" -}}
+{{- end -}}
+{{- if and (ne $count 1) (lt $count 3) -}}
+{{- fail (printf "Master node count must be exactly 1 (single master) or at least 3 (HA); got %d" $count) -}}
+{{- end -}}
+{{- $count -}}
+{{- end -}}
+
+{{/*
 Generate a consistent 8-character string based on release context
 */}}
 {{- define "rancher-cluster-templates.randomString" -}}

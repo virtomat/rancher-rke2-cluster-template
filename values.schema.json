@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "cluster": {
+      "type": "object",
+      "properties": {
+        "config": {
+          "type": "object",
+          "properties": {
+            "kubernetesVersion": {
+              "type": "string",
+              "enum": [
+                "v1.33.12+rke2r2",
+                "v1.34.6+rke2r1",
+                "v1.35.6+rke2r1"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -84,14 +84,13 @@ questions:
     show_if: configMode=Advanced
   - variable: cluster.config.kubernetesVersion
     default: v1.35.6+rke2r1
-    description: 'Specify Kubernetes Version'
+    description: 'RKE2 Kubernetes version; the matching OpenStack CCM image is derived automatically from this version and is not separately configurable. Supported: v1.33.12+rke2r2, v1.34.6+rke2r1, v1.35.6+rke2r1.'
     label: 'Kubernetes Version'
     type: enum
     required: true
     options:
-      - v1.31.13+rke2r1
-      - v1.32.9+rke2r1
       - v1.33.12+rke2r2
+      - v1.34.6+rke2r1
       - v1.35.6+rke2r1
     group: 'General'
   - variable: cluster.config.openstack.enabled
@@ -109,7 +108,7 @@ questions:
         required: true
         group: 'General'
       - variable: cluster.config.openstack.floatingipPool
-        description: 'Rancher NodeDriver floating-IP network name for instances; CCM floatingNetworkId is sourced from os-ccm-net-config'
+        description: 'Rancher NodeDriver floating-IP network name for the master node; used only when the effective master count is exactly 1 (single master). CCM floatingNetworkId is sourced from os-ccm-net-config'
         label: 'floatingipPool'
         type: string
         default: 'ext_net_gts'
@@ -141,14 +140,21 @@ questions:
         default: 'local-net'
         show_if: configMode=Advanced
         group: 'General'
-      - variable: cluster.config.openstack.secGroups
-        description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
-        label: 'secGroups'
-        type: string
-        default: 'k8s-rke2'
-        show_if: configMode=Advanced
-        group: 'General'
-      - variable: cluster.config.openstack.sshPort
+       - variable: cluster.config.openstack.secGroups
+         description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
+         label: 'secGroups'
+         type: string
+         default: 'k8s-rke2'
+         show_if: configMode=Advanced
+         group: 'General'
+       - variable: cluster.config.openstack.publicIngressSecGroups
+         description: 'OpenStack comma separated (no spaces in between) security groups appended only to a single master for public ingress'
+         label: 'publicIngressSecGroups'
+         type: string
+         default: 'k8s-rke2-public-ingress'
+         show_if: configMode=Advanced
+         group: 'General'
+       - variable: cluster.config.openstack.sshPort
         description: 'OpenStack SSH port'
         label: 'sshPort'
         default: '22'
