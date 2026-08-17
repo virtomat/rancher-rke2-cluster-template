@@ -140,21 +140,21 @@ questions:
         default: 'local-net'
         show_if: configMode=Advanced
         group: 'General'
-       - variable: cluster.config.openstack.secGroups
-         description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
-         label: 'secGroups'
-         type: string
-         default: 'k8s-rke2'
-         show_if: configMode=Advanced
-         group: 'General'
-       - variable: cluster.config.openstack.publicIngressSecGroups
-         description: 'OpenStack comma separated (no spaces in between) security groups appended only to a single master for public ingress'
-         label: 'publicIngressSecGroups'
-         type: string
-         default: 'k8s-rke2-public-ingress'
-         show_if: configMode=Advanced
-         group: 'General'
-       - variable: cluster.config.openstack.sshPort
+      - variable: cluster.config.openstack.secGroups
+        description: 'OpenStack comma separated (no spaces in between) security groups for the machine'
+        label: 'secGroups'
+        type: string
+        default: 'k8s-rke2'
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.publicIngressSecGroups
+        description: 'OpenStack comma separated (no spaces in between) security groups appended only to a single master for public ingress'
+        label: 'publicIngressSecGroups'
+        type: string
+        default: 'k8s-rke2-public-ingress'
+        show_if: configMode=Advanced
+        group: 'General'
+      - variable: cluster.config.openstack.sshPort
         description: 'OpenStack SSH port'
         label: 'sshPort'
         default: '22'

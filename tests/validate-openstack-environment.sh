@@ -18,6 +18,11 @@ checklist="$chart_dir/rancher-ui-test-checklist.md"
 update_plan="$chart_dir/update-plan.md"
 security_doc="$chart_dir/troubleshooting/security-group-tuning.md"
 
+if ! ruby -e 'require "yaml"; YAML.load_file(ARGV.fetch(0)); puts "questions.yaml parses"' "$questions"; then
+  printf '%s\n' "questions.yaml is not valid YAML" >&2
+  exit 1
+fi
+
 assert_absent() {
   local pattern=$1
   shift
