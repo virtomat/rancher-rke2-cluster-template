@@ -4,6 +4,7 @@
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 {{- $userId := regexReplaceAll "^u-" $namespace "" }}
 {{- $suffix := include "rancher-cluster-templates.randomString" . }}
+{{- $masterCount := include "rancher-cluster-templates.masterCount" $ | int }}
 
 apiVersion: provisioning.cattle.io/v1
 kind: Cluster
@@ -34,9 +35,6 @@ spec:
     {{- with .Values.cluster.config.agentEnvs }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- end }}
-  {{- if .Values.cluster.config.cloudCredentialSecretName }}
-  cloudCredentialSecretName: "cattle-global-data:{{ .Values.cluster.config.cloudCredentialSecretName }}"
   {{- end }}
   # clusterAPIConfig:
   # clusterAgentDeploymentCustomization:
@@ -71,12 +69,15 @@ spec:
     additionalManifest: |
 {{ include "rancher-cluster-templates.openstackCcmManifest" . | indent 6 }}
 
-    {{- if .Values.cluster.config.chartValues }}
-    chartValues:
-      {{- with .Values.cluster.config.chartValues }}
-      {{- toYaml . | nindent 6 }}
-      {{- end }}
+    {{- $chartValues := .Values.cluster.config.chartValues | default dict | deepCopy }}
+    {{- $ingressValues := dict "controller" (dict "service" (dict "enabled" false) "hostPort" (dict "enabled" true "ports" (dict "http" 80 "https" 443)) "nodeSelector" (dict "kubernetes.io/os" "linux" "node.kubernetes.io/control-plane" "true") "tolerations" (list (dict "key" "node-role.kubernetes.io/control-plane" "operator" "Exists" "effect" "NoSchedule") (dict "key" "node-role.kubernetes.io/etcd" "operator" "Exists" "effect" "NoExecute"))) }}
+    {{- if ge $masterCount 3 }}
+    {{- $ingressValues = dict "controller" (dict "service" (dict "enabled" true "type" "LoadBalancer")) }}
     {{- end }}
+    {{- $existingIngress := deepCopy (default dict (index $chartValues "rke2-ingress-nginx")) }}
+    {{- $_ := set $chartValues "rke2-ingress-nginx" (mergeOverwrite $existingIngress $ingressValues) }}
+    chartValues:
+      {{- toYaml $chartValues | nindent 6 }}
     # chartValues:
     #   rke2-calico: {}
 
@@ -201,9 +202,16 @@ spec:
       {{- if .Values.nodepools }}
       {{- range $index, $nodepool := .Values.nodepools }}
       {{- if or (eq $index 0) (eq $.Values.nodePoolTemplate "MultiPool") }}
+      {{- $poolCounts := $.Values.nodePoolCounts | default dict }}
+      {{- $quantity := $nodepool.quantity }}
+      {{- if eq $nodepool.name "master" }}
+      {{- $quantity = include "rancher-cluster-templates.masterCount" $ }}
+      {{- else if eq $nodepool.name "worker" }}
+      {{- $quantity = (default $nodepool.quantity (index $poolCounts "worker")) }}
+      {{- end }}
       - name: {{ $nodepool.name }}
         displayName: {{ $nodepool.displayName | default $nodepool.name }}
-        quantity: {{ $nodepool.quantity }}
+        quantity: {{ $quantity }}
         etcdRole: {{ or (and (eq $.Values.nodePoolTemplate "MultiPool") (eq $index 0)) (eq $.Values.nodePoolTemplate "SinglePool") }}
         controlPlaneRole: {{ or (and (eq $.Values.nodePoolTemplate "MultiPool") (eq $index 0)) (eq $.Values.nodePoolTemplate "SinglePool") }}
         # assumed false if index is zero (first pool is for master nodes) and true otherwise (the rest of the pools are for worker nodes)

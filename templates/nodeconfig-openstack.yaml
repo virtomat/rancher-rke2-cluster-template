@@ -2,7 +2,11 @@
 # yamllint disable rule:line-length
 # yamllint disable rule:braces
 
+{{- $environment := include "rancher-cluster-templates.openstackEnvironment" $ | fromYaml }}
+{{- $applicationCredential := include "rancher-cluster-templates.applicationCredential" $ | fromYaml }}
+{{- $masterCount := include "rancher-cluster-templates.masterCount" $ | int }}
 {{- range $index, $nodepool := .Values.nodepools }}
+{{- if or (eq $index 0) (eq $.Values.nodePoolTemplate "MultiPool") }}
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
 ---
 apiVersion: rke-machine-config.cattle.io/v1
@@ -14,37 +18,41 @@ metadata:
 activeTimeout: {{ $nodepool.openstackconfig.activeTimeout | default "200" | quote }}
 
 {{- $val := $.Values.cluster.config.openstack }}
-{{- $secret := (lookup "v1" "Secret" $namespace $val.applicationCredentialSecretName) }}
-{{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
-applicationCredentialId: {{- if $val.applicationCredentialId }}
-  {{ $val.applicationCredentialId }}
-  {{- else if and $secret $secret.data.applicationCredentialId }}
-  {{ $secret.data.applicationCredentialId | b64dec }}
-  {{- end }}
-{{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
-applicationCredentialName: {{- if $val.applicationCredentialName }}
-  {{ $val.applicationCredentialName }}
-  {{- else if and $secret $secret.data.applicationCredentialName }}
-  {{ $secret.data.applicationCredentialName | b64dec }}
-  {{- end }}
-{{/*If the values are defined in .Values.cluster.config.openstack.*, they are used directly. Otherwise, fall back to secret.*/}}
-applicationCredentialSecret: {{- if $val.applicationCredentialSecret }}
-  {{ $val.applicationCredentialSecret }}
-  {{- else if and $secret $secret.data.applicationCredentialSecret }}
-  {{ $secret.data.applicationCredentialSecret | b64dec }}
-  {{- end }}
+applicationCredentialId: {{ $applicationCredential.id | quote }}
+applicationCredentialSecret: {{ $applicationCredential.secret | quote }}
 
-authUrl: {{ $.Values.cluster.config.openstack.authUrl }}
+authUrl: {{ $environment.authUrl | quote }}
 
 keypairName: {{ $.Values.cluster.config.openstack.defaultKeypairName }}
 
-{{ if lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName }}
-privateKeyFile: | {{ (lookup "v1" "Secret" $namespace $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName).data.privatekey | b64dec | nindent 4 }}
+{{- $pkSecretName := $.Values.cluster.config.openstack.defaultPrivateKeyFileSecretName | default "openstack-privatekey" }}
+{{- $pkSecret := lookup "v1" "Secret" $namespace $pkSecretName }}
+{{- if not $pkSecret }}
+{{- fail (printf "OpenStack SSH private-key Secret %q is required in namespace %q" $pkSecretName $namespace) }}
 {{- end }}
+{{- if not (and $pkSecret.data (hasKey $pkSecret.data "privatekey")) }}
+{{- fail (printf "OpenStack SSH private-key Secret %q in namespace %q requires data.privatekey" $pkSecretName $namespace) }}
+{{- end }}
+{{- $privateKey := b64dec (index $pkSecret.data "privatekey") }}
+{{- if not (trim $privateKey) }}
+{{- fail (printf "OpenStack SSH private-key Secret %q in namespace %q has empty data.privatekey" $pkSecretName $namespace) }}
+{{- end }}
+privateKeyFile: | {{ $privateKey | nindent 4 }}
 
-region: {{ $.Values.cluster.config.openstack.region }}
+region: {{ $environment.region | quote }}
 
-secGroups: {{ $.Values.cluster.config.openstack.secGroups }}
+{{- $secGroups := $.Values.cluster.config.openstack.secGroups }}
+{{- if and (eq $nodepool.name "master") (eq $masterCount 1) }}
+  {{- $publicIngressSecGroups := trim (default "" $.Values.cluster.config.openstack.publicIngressSecGroups) }}
+  {{- if $publicIngressSecGroups }}
+    {{- if $secGroups }}
+      {{- $secGroups = printf "%s,%s" $secGroups $publicIngressSecGroups }}
+    {{- else }}
+      {{- $secGroups = $publicIngressSecGroups }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+secGroups: {{ $secGroups }}
 
 sshPort: {{ $.Values.cluster.config.openstack.sshPort | quote}}
 
@@ -62,7 +70,7 @@ flavorId: {{ $.Values.cluster.config.openstack.workerFlavorId }}
   {{- end }}
 {{- end }}
 
-{{- if and (eq $nodepool.name "master") (eq ($nodepool.quantity | int) 1) }}
+{{- if and (eq $nodepool.name "master") (eq $masterCount 1) }}
 floatingipPool: {{ $.Values.cluster.config.openstack.floatingipPool }}
 {{- end }}
 
@@ -79,14 +87,17 @@ imageId: {{ $.Values.cluster.config.openstack.imageId }}
 {{- if $nodepool.openstackconfig.availabilityZone }}
 availabilityZone: {{ $nodepool.openstackconfig.availabilityZone }}
 {{- end }}
-{{- if $nodepool.openstackconfig.bootFromVolume }}
-bootFromVolume: {{ $nodepool.openstackconfig.bootFromVolume }}
+{{- if and (hasKey $nodepool.openstackconfig "bootFromVolume") (eq (toString $nodepool.openstackconfig.bootFromVolume) "false") }}
+{{- fail "Zero-local-disk workload flavors require bootFromVolume=true" }}
 {{- end }}
+bootFromVolume: true
 {{- if $nodepool.openstackconfig.cacert }}
 cacert: {{ $nodepool.openstackconfig.cacert }}
 {{- end }}
-{{- if $nodepool.openstackconfig.configDrive }}
+{{- if hasKey $nodepool.openstackconfig "configDrive" }}
 configDrive: {{ $nodepool.openstackconfig.configDrive }}
+{{- else }}
+configDrive: true
 {{- end }}
 {{- if $nodepool.openstackconfig.domainId }}
 domainId: {{ $nodepool.openstackconfig.domainId }}
@@ -138,11 +149,14 @@ volumeId: {{ $nodepool.openstackconfig.volumeId }}
 {{- if $nodepool.openstackconfig.volumeName }}
 volumeName: {{ $nodepool.openstackconfig.volumeName }}
 {{- end }}
-{{- if $nodepool.openstackconfig.volumeSize }}
+{{- if hasKey $nodepool.openstackconfig "volumeSize" }}
 volumeSize: "{{ $nodepool.openstackconfig.volumeSize }}"
+{{- else }}
+volumeSize: "40"
 {{- end }}
 {{- if $nodepool.openstackconfig.volumeType }}
 volumeType: {{ $nodepool.openstackconfig.volumeType }}
 {{- end }}
 
+{{- end }}
 {{- end }}

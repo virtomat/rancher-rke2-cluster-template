@@ -16,7 +16,7 @@ The underlying infrastructure is OpenStack.
 You may run OpenStack CLI commands after sourcing:
 
 ```bash
-source ~/.openstack/admin-openrc.sh
+source ./.openstack/admin-openrc-dev.sh
 ```
 
 **Example allowed commands:**
@@ -30,17 +30,7 @@ openstack port list
 
 Always use concise filtering when reasonable.
 
-## 3. Node Access
-
-You may connect via SSH to the OpenStack nodes:
-
-- `virt-epoxy-1`
-- `virt-epoxy-2`
-- `virt-epoxy-3`
-
-These nodes host both the control plane LXC containers and the compute services.
-
-## 4. Logs & Diagnostics
+## 3. Logs & Diagnostics
 
 Prefer `journalctl` over reading log files directly from disk.
 
@@ -52,7 +42,7 @@ journalctl -u <service> | grep ERROR
 journalctl -xeu <service>
 ```
 
-## 5. Interactive Debugging Rules
+## 4. Interactive Debugging Rules
 
 When the user requests an interactive session:
 
@@ -61,7 +51,7 @@ When the user requests an interactive session:
 - Give feedback immediately
 - Only then propose the next logical command
 
-## 6. Output Management
+## 5. Output Management
 
 - Keep outputs concise. Summaries are preferred unless the full output is explicitly asked for
 - When you expect very long output, warn the user and apply filtering by default

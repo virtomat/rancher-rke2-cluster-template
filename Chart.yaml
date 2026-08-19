@@ -4,7 +4,7 @@
 apiVersion: v2
 name: rke2-cluster-templates
 description: Virtomat Openstack RKE2 Cluster Template
-version: 1.0.0
+version: 1.0.5
 kubeVersion: '>=v1.26.0'
 type: application
 home: https://docs.virtomat.net
@@ -14,7 +14,7 @@ sources:
 maintainers:
   - name: Radu Moisan
     email: radu@virtomat.io
-icon: https://raw.githubusercontent.com/virtomat/rancher-rke2-cluster-template/3abbcf6749c82cc8284899c764b79bfc31fca9df/virtomat.png
+icon: https://docs.devopscentral.eu/assets/public/logo-simple.png
 annotations:
   catalog.cattle.io/type: cluster-template
   catalog.cattle.io/namespace: fleet-default

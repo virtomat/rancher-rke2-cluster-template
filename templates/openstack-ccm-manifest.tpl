@@ -4,5 +4,5 @@ This template processes the openstack-ccm-manifest.yaml file and renders it with
 */}}
 {{- define "rancher-cluster-templates.openstackCcmManifest" -}}
 {{- $manifest := .Files.Get "files/openstack-ccm-manifest.yaml" }}
-{{- $manifest -}}
+{{- tpl $manifest . -}}
 {{- end -}}

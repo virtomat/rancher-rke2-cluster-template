@@ -4,6 +4,9 @@
 # Simple or Advanced
 configMode: Simple
 nodePoolTemplate: SinglePool
+nodePoolCounts:
+  master:
+  worker:
 
 # Cloud Init definition
 # https://cloudinit.readthedocs.io/en/latest/reference/modules.html
@@ -11,9 +14,10 @@ nodePoolTemplate: SinglePool
 x-openstackconfig: &openstackconfig
   activeTimeout:
   # availabilityZone:
-  # bootFromVolume: # Default: false
+  # Zero-local-disk workload flavors require a Cinder boot volume.
+  bootFromVolume: true
   # cacert:
-  # configDrive:  # Default: false
+  configDrive: true
   # domainId:
   # domainName:
   # endpointType: # (adminURL, internalURL or publicURL)
@@ -24,11 +28,9 @@ x-openstackconfig: &openstackconfig
   imageName: ""
   # insecure: # Default: false
   # ipVersion:  # Default: 4
-  keypairName: ""
   # netId:
   netName: ""
   # novaNetwork: # Default: false
-  region: ""
   secGroups: "" # Comma separated list (no spaces before and after)
   # sshPort:  # Default: 22
   # sshUser:  # Default: ubuntu
@@ -44,8 +46,9 @@ x-openstackconfig: &openstackconfig
   # volumeDevicePath:
   # volumeId:
   # volumeName:
-  # volumeSize:
-  # volumeType:
+  volumeSize: 40
+  # Empty selects the environment-default Cinder volume type.
+  volumeType: ""
 
 # cluster values
 cluster:
@@ -58,44 +61,37 @@ cluster:
   config:
     # agentEnvs: {}
 
-    # In the rancher UI the cloud credential secret name is the ID field, doesn't need to be provided if using custom driver
-    # When using Username for authentication, the password has to be in the `cloudCredentialSecretName` key/value.
-    # Otherwise it's content doesn't matter
-    cloudCredentialSecretName: ""
-
     openstack:
-      authUrl: "https://cloud.virtomat.dev:5000/v3"
-      applicationCredentialSecretName: ""  # "os-app-cred-xtpfiucyek"
-      applicationCredentialName: ""
-      applicationCredentialId: ""  # "e2002ed4c26c48f5abadd8b79425d3d0"
-      applicationCredentialSecret: ""  # "a3cc5aa9d461f8f63757dc1f13e876a049924d6c4bfd18bc7848ff6227c4a503"
-      defaultKeypairName: bootstrap  # User's Key Pair from Openstack/Horizon
+      applicationCredentialSecretName: ""
+      # Onboarding-owned key and Secret conventions; they are not UI inputs.
+      defaultKeypairName: bootstrap
       defaultPrivateKeyFileSecretName: openstack-privatekey
       sshPort: 22
       sshUser: ubuntu
-      region: RegionOne
-      secGroups: default
+      secGroups: k8s-rke2
+      # Comma-separated names without spaces; attached only to a single master.
+      publicIngressSecGroups: k8s-rke2-public-ingress
       imageId:
       imageName: ubuntu-24.04
       masterFlavorId:
-      masterFlavorName: s1e.small
+      masterFlavorName: c1.medium
       workerFlavorId:
-      workerFlavorName: s1e.medium
-      floatingipPool: office
+      workerFlavorName: s1.medium
+      # Rancher NodeDriver floating-IP network name; this is not the CCM network UUID.
+      # Used only for the master nodepool when the effective master count is exactly 1.
+      floatingipPool: ext_net_gts
       netId:
       netName: local-net
 
-      # Openstack CCM
+      # Onboarding-owned CCM network Secret convention; it is not a UI input.
       ccmNetConfigSecretName: "os-ccm-net-config"
-      subnetId: ""  # "345dc7b8-98cc-4f5a-9d7e-b129f6691298"          # the value from secret (if found) takes precedence
-      floatingNetworkId: ""  # "543d2955-5ab0-4077-8637-0d54cf55695b" # the value from secret (if found) takes precedence
 
     # defaultClusterRoleForProjectMembers:
     # defaultPodSecurityAdmissionConfigurationTemplateName:
     # defaultPodSecurityPolicyTemplateName:
     # enableNetworkPolicy:  # Default: false
 
-    kubernetesVersion: "v1.30.4+rke2r1"
+    kubernetesVersion: "v1.35.6+rke2r1"
 
     # enable local auth endpoint
     localClusterAuthEndpoint:
@@ -215,12 +211,16 @@ cluster:
     #     # skipWaitForDeleteTimeoutSeconds: 0
     #     # timeout: 120
 
+    # The rke2-ingress-nginx controller service is forced by the template from
+    # the effective master count: single master disables it (node floating IP +
+    # host ports serve ingress); HA (>=3 masters) enables it as a LoadBalancer
+    # served by CCM/Octavia. The default here matches the default single-master
+    # topology; conflicting user chartValues are overridden by that logic.
     chartValues:
       rke2-ingress-nginx:
         controller:
           service:
-            enabled: true
-            type: LoadBalancer
+            enabled: false
 
 nodepools:
   - name: master
@@ -279,17 +279,5 @@ addons:
   monitoring:
     enabled: false
     # version: 103.0.4+up45.31.1
-    # values:
-    #   values here
-
-  longhorn:
-    enabled: false
-    # version: 103.2.2+up1.5.4
-    # values:
-    #   values here
-
-  neuvector:
-    enabled: false
-    # version: 103.0.2+up2.7.3
     # values:
     #   values here

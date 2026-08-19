@@ -204,7 +204,7 @@ spec:
       hostNetwork: true
       containers:
         - name: openstack-cloud-controller-manager
-          image: registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.33.0
+          image: {{ include "rancher-cluster-templates.openstackCcmImage" . }}
           args:
             - /bin/openstack-cloud-controller-manager
             - --cloud-config=/etc/rancher/rke2/cloud.conf

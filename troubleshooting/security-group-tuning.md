@@ -1,5 +1,9 @@
 # Load Balancer Operating Status ERROR - Security Group Issue
 
+> Current preferred model: pre-create a baseline Kubernetes node security group such as `k8s-rke2` and attach it through `cluster.config.openstack.secGroups`. The chart appends `cluster.config.openstack.publicIngressSecGroups` (default `k8s-rke2-public-ingress`) only to a single master; HA masters and workers retain the baseline group. In HA the public ingress group is never attached, and the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from the tenant subnet; public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts. Do not add public `6443` and do not alter the baseline or ingress topology behavior. Treat changes to the project `default` security group as temporary Dev/debug-only workarounds.
+>
+> Scope note: this document is about the OpenStack CCM / Octavia / `Service type=LoadBalancer` path used by HA clusters (3+ masters). In HA, no node floating IPs are assigned; external addresses are allocated by Octavia for LoadBalancer services via the CCM network Secret. Single-master clusters instead give the master node a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), schedule the packaged `rke2-ingress-nginx` controller on that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, and disable its Service. The single-master public ingress group needs only TCP `80` and `443` from intended client CIDRs; it does not use the LoadBalancer path covered here.
+
 ## Problem Statement
 
 When creating a Kubernetes (RKE2) cluster using this Helm chart, a load balancer is automatically provisioned by OpenStack Octavia for the NGINX ingress controller. However, the load balancer shows:
@@ -41,8 +45,8 @@ This works fine for VM-to-VM communication within the same group, but breaks whe
 ### Network Architecture
 
 ```
-[User] ’ [LB VIP: 10.0.17.53] ’ [Amphora: 10.0.17.218] ’ [Worker: 10.0.17.117:30690/32169]
-                                          “
+[User] ï¿½ [LB VIP: 10.0.17.53] ï¿½ [Amphora: 10.0.17.218] ï¿½ [Worker: 10.0.17.117:30690/32169]
+                                          ï¿½
                                    Health Checks
                                    (TCP to NodePorts)
 ```
@@ -74,7 +78,7 @@ $ openstack security group rule list 4e6d1d22-043d-4bca-9e37-6bbb315b2dc5 --ingr
 ### 1. List Load Balancers and Check Status
 
 ```bash
-source ~/.openstack/admin-openrc.sh
+source ./.openstack/admin-openrc-dev.sh
 openstack loadbalancer list
 ```
 
@@ -145,24 +149,6 @@ openstack security group rule list $SG_ID --ingress
 # Look for rules with remote_ip_prefix: 10.0.17.0/24
 ```
 
-### 7. Check Octavia Logs (Optional)
-
-```bash
-# SSH to control plane node
-ssh virt-epoxy-1
-
-# Find Octavia container
-lxc-ls -f | grep octavia
-
-# Check health manager logs
-lxc-attach -n epoxy-dev-1-octavia-server-container-3aa720c0 -- \
-  journalctl -u octavia-health-manager -n 100 --no-pager
-
-# Check worker logs for errors
-lxc-attach -n epoxy-dev-1-octavia-server-container-3aa720c0 -- \
-  journalctl -u octavia-worker --since '2025-11-25 12:00' --no-pager
-```
-
 ## Solution
 
 ### The Fix: Allow Subnet Traffic
@@ -181,7 +167,7 @@ Add a security group rule to allow all TCP traffic from the load balancer subnet
 
 ```bash
 # Source admin credentials
-source ~/.openstack/admin-openrc.sh
+source ./.openstack/admin-openrc-dev.sh
 
 # Identify the user's project
 PROJECT_NAME="John.Doe-ws"  # Or use project ID directly
@@ -299,8 +285,8 @@ If testing as admin worked but user deployments failed, it's likely due to:
 ### Kubernetes NodePort Services
 
 Kubernetes exposes services using NodePorts (default range: 30000-32767). The NGINX ingress controller uses NodePort services:
-- Port 30690 ’ HTTP (80)
-- Port 32169 ’ HTTPS (443)
+- Port 30690 ï¿½ HTTP (80)
+- Port 32169 ï¿½ HTTPS (443)
 
 These ports are dynamically allocated and **change with each cluster deployment**, making port-specific rules impractical.
 
@@ -312,6 +298,8 @@ OpenStack Octavia creates a **unique security group per load balancer** with nam
 - Makes it difficult to write rules that reference "all amphorae"
 
 This is why **subnet-based rules** are the recommended approach for Kubernetes integration.
+
+In the current HA model the CCM keeps its per-LB security-group management disabled: the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. Amphora-to-member reachability is provided exclusively by the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from the tenant subnet.
 
 ### Network Isolation
 
@@ -331,6 +319,7 @@ To prevent this issue in future cluster deployments:
 3. **Automate in Terraform/Ansible** if using infrastructure-as-code
 4. **Create cluster templates** with pre-configured security groups
 5. **Use dedicated security groups** for Kubernetes workers (Option 1 above)
+6. **Keep the CCM security-group management disabled** in HA: the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` groups. The onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet is the single source of amphora-to-member reachability, and the public ingress group is never attached in HA.
 
 ## Related Issues
 
