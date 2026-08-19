@@ -60,4 +60,3 @@ spec:
           - /spec/endpoints
 {{- end }}
 {{- end }}
-
