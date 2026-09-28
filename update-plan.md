@@ -75,9 +75,8 @@ This section preserves the current cleanup analysis so work can resume in a late
 ### Safe Removal Candidates
 
 - `systemprompt.md`
-  - Appears unrelated to this Helm chart.
-  - No chart references found.
-  - Candidate for removal from this repo.
+  - Confirmed unrelated to this Helm chart (no functional references found).
+  - Removed.
 - `questions.yaml`: `masternode.extraConfigs`
   - UI-only visibility toggle.
   - Does not affect rendered templates.
@@ -161,7 +160,7 @@ This section preserves the current cleanup analysis so work can resume in a late
 - [ ] Trim README NodeDriver manifest to minimal guidance.
 - [ ] Decide what to do with `CHANGELOG.md`.
 - [ ] Decide what to do with `troubleshooting/security-group-tuning.md`.
-- [ ] Remove `systemprompt.md` if confirmed unrelated.
+- [x] Remove `systemprompt.md` (confirmed unrelated, removed).
 - [ ] Keep README focused on usage, prerequisites, and links to deeper notes.
 
 ### P3: Validation Procedure
