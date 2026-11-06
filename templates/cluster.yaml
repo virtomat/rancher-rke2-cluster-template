@@ -68,6 +68,7 @@ spec:
 
     additionalManifest: |
 {{ include "rancher-cluster-templates.openstackCcmManifest" . | indent 6 }}
+{{ include "rancher-cluster-templates.openstackCinderCsiManifest" . | indent 6 }}
 
     {{- $chartValues := .Values.cluster.config.chartValues | default dict | deepCopy }}
     {{- $ingressValues := dict "controller" (dict "service" (dict "enabled" false) "hostPort" (dict "enabled" true "ports" (dict "http" 80 "https" 443)) "nodeSelector" (dict "kubernetes.io/os" "linux" "node.kubernetes.io/control-plane" "true") "tolerations" (list (dict "key" "node-role.kubernetes.io/control-plane" "operator" "Exists" "effect" "NoSchedule") (dict "key" "node-role.kubernetes.io/etcd" "operator" "Exists" "effect" "NoExecute"))) }}

@@ -52,6 +52,7 @@ The main files to keep in sync during this work are:
   - `rke-machine-config.cattle.io/v1` `OpenstackConfig`
   - generated `<cluster-name>-cloud-config-<suffix>` Secret
   - OpenStack CCM manifest embedded in `additionalManifest`
+  - OpenStack Cinder CSI manifest (driver, sidecars, RBAC, and two StorageClasses) appended to `additionalManifest` after the CCM manifest
 - Floating-IP and ingress topology is selected by the effective master count (`nodePoolCounts.master`, falling back to the `master` nodepool `quantity`):
   - single master (count `1`): the master `OpenstackConfig` renders `floatingipPool` (default `ext_net_gts`) and appends `publicIngressSecGroups` to the baseline `secGroups`; the packaged `rke2-ingress-nginx` controller is forced onto that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is disabled
   - HA (count `>= 3`): no node floating IPs are assigned; the packaged `rke2-ingress-nginx` controller service is forced to `enabled: true` with `type: LoadBalancer`, and external addresses are allocated by OpenStack CCM/Octavia from `os-ccm-net-config.floatingNetworkId`. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet, so the generated `cloud.conf` sets `manage-security-groups = false` and the CCM must not create per-LB `lb-sg-*` security groups; the public ingress group is never attached in HA, and public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts
@@ -61,6 +62,75 @@ The main files to keep in sync during this work are:
 - The chart requires a local `rke2-openstack-environment` ConfigMap in the derived `u-<suffix>` namespace with non-empty `authUrl` and `region` keys. Onboarding projects the canonical `fleet-default/rke2-openstack-environment` ConfigMap into the user namespace, so the chart never reads the `fleet-default` copy. All normal user Helm lookups are therefore local, and no user `fleet-default` access is needed. These values are not chart inputs and are used for both node provisioning and CCM configuration.
 - Current chart behavior is RKE2/OpenStack oriented, and the first validation path is a single-node RKE2 install in Dev.
 - Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after onboarding has projected the local ConfigMap into the user namespace.
+- The offline Cinder CSI contract test is different from a plain `helm template`: `python3 tests/validate-cinder-csi.py` copies the chart to a temporary directory, replaces only the four `lookup` call sites with synthetic fixtures, and renders all other template logic unchanged. It requires `helm` and Python 3 with PyYAML, never contacts a cluster, and does not relax the production templates' fail-closed lookups.
+
+## OpenStack Cinder CSI And Storage Classes
+
+New clusters bootstrapped from this template install the OpenStack Cinder CSI
+driver automatically: the chart appends its manifest to `additionalManifest`
+after the CCM manifest, so the driver, its sidecars, RBAC, and both
+StorageClasses are created with the cluster. The chart cannot distinguish a
+new install from an existing release, so this add-on targets newly provisioned
+clusters; do not upgrade an existing release to validate it, and existing
+clusters are not changed by this task.
+
+- Images: the driver and sidecars are derived from the same three-version RKE2
+  matrix as the CCM (RKE2 `v1.33.12+rke2r2` -> driver `v1.33.0`,
+  `v1.34.6+rke2r1` -> driver `v1.34.0`, `v1.35.6+rke2r1` -> driver
+  `v1.35.0`) with pinned sidecar tags. There is no user image input.
+- Storage classes: `cinder-delete` uses `Delete` and is the sole default;
+  `cinder-retain` uses `Retain` and is not a default. Both set
+  `volumeBindingMode: WaitForFirstConsumer` and `allowVolumeExpansion: true`,
+  and rely on the provisioner default filesystem (ext4). No volume type or
+  availability zone is hardcoded: the volume type uses the Cinder environment
+  default, and the availability zone is selected through CSI topology from the
+  consuming node.
+- Class selection: a PVC that omits `storageClassName` gets the default
+  `cinder-delete`; an explicit `storageClassName: ""` opts out and leaves the
+  claim to a manually managed volume.
+- `cinder-retain` keeps the PV and its backing Cinder volume after PVC
+  deletion, but it does not rebind automatically. Recovering that data means
+  manual PV/volume handling, and any deletion test must record the retained PV
+  and volume ID and reconcile only those test resources under an authorized
+  run.
+- Scope of capability: plain filesystem RWO volumes for general workloads.
+  This initial add-on provides no snapshot support and no shared RWX access.
+- Authentication is unchanged from the CCM path. The driver mounts only the
+  existing `/etc/rancher/rke2/cloud.conf` as a read-only file, so the per-user
+  application credential is reused; there are no new credential inputs,
+  Secrets, or embedded credentials in the manifest.
+- Scheduling: one controller replica runs on a Linux control-plane node and
+  tolerates the control-plane/etcd taints; the node plugin runs on every Linux
+  node, including masters, with privileged CSI access and host mounts. The
+  manifest assumes the default `/var/lib/kubelet`; a custom kubelet root
+  directory is not supported.
+- Topology caveat: the shared `cloud.conf` sets `ignore-volume-az = true`, but
+  that does not by itself reconcile Nova/Cinder availability-zone mismatches.
+  Upstream defaults request the node topology AZ, so validate Nova/Cinder AZ
+  compatibility before acceptance. Genuinely differing zones need a separately
+  designed availability/topology configuration, not blind removal of the check.
+- Expansion: `allowVolumeExpansion: true` enables the CSI capability, but
+  online resize still depends on backend Cinder support.
+
+Live acceptance was run on 2026-11-06 against a newly provisioned Dev cluster
+(chart `1.0.5`, first Helm revision, default RKE2 `v1.35.6+rke2r1`, one
+control-plane node and two workers). Observed: controller `1/1`, node DaemonSet
+`3/3`, `CSINode` registration on all three nodes, a claim omitting
+`storageClassName` defaulted to `cinder-delete` at admission and stayed
+`Pending` under WaitForFirstConsumer until a consumer was scheduled, mount,
+write, and re-read with SHA-256 verification, a workload move between workers
+with detach/reattach of the same volumes, online 1Gi -> 2Gi expansion with the
+claim, PV, backend volume, and filesystem all growing, the default `Delete` path
+removing PVC, PV, and Cinder volume, and the explicit `Retain` path leaving the
+PV `Released` and the Cinder volume available with no attachments.
+
+Scope of that result: a single master plus two workers on RKE2 `v1.35.6+rke2r1`
+only. It is not live evidence for HA topology or for the `v1.33.12+rke2r2` and
+`v1.34.6+rke2r1` matrix rows, which remain offline-render-only, and it does not
+validate Rancher UI RBAC or password authentication. The test cluster and
+retained PV/volume were subsequently cleaned up under explicit authorization on
+2026-11-06, leaving no test resources; shared onboarding resources were
+preserved. This add-on is not yet a full production-ready claim.
 
 
 ## Prerequisites

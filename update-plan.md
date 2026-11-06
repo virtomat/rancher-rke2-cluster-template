@@ -331,6 +331,7 @@ helm upgrade --install dev-rke2-single . \
 ### Static Chart Checks
 
 - Run `helm lint`.
+- Run the offline Cinder CSI contract test: `python3 tests/validate-cinder-csi.py` (requires `helm` and Python 3 with PyYAML). It renders the real chart from a temporary copy with synthetic `lookup` fixtures only; production templates stay fail-closed.
 - Render with default values.
 - Render with `nodePoolTemplate=SinglePool`.
 - Render with `nodePoolTemplate=MultiPool`.
@@ -361,6 +362,16 @@ helm upgrade --install dev-rke2-single . \
 4. Merge cleaned shared baseline toward `main`.
 5. Read-only Rancher namespace and secret-shape inspection in Prod using `virt-infra-prod-buc-hq`.
 6. Prod-specific patch series on `main`.
+
+## Cinder CSI Bootstrap Add-On (New Clusters)
+
+- Accepted scope: new clusters bootstrapped from the template install the OpenStack Cinder CSI driver through `additionalManifest` after the CCM manifest. The chart cannot distinguish a new install from an existing release, so this add-on is not validated by upgrading an existing release; existing clusters are not deployed or upgraded by this task.
+- Images: driver and sidecars are pinned by the existing three-version RKE2 matrix, with no user image input.
+- Storage: exactly `cinder-delete` (`Delete`, sole default) and `cinder-retain` (`Retain`, non-default). Both use `WaitForFirstConsumer`, enable expansion, default to ext4 through the provisioner, use the Cinder environment default volume type, and select the availability zone through CSI topology instead of a hardcoded AZ.
+- Credentials: the existing per-user application credential is reused through the node `/etc/rancher/rke2/cloud.conf`, mounted read-only as a single file. No new credential inputs, Secrets, or embedded auth are added.
+- Limits: plain filesystem RWO only; no snapshot support and no shared RWX.
+- Topology: the shared `cloud.conf` `ignore-volume-az = true` does not by itself reconcile Nova/Cinder availability zones. Upstream defaults request the node topology AZ, so validate AZ compatibility before acceptance and design separate availability configuration for mismatched zones rather than disabling the check blindly.
+- Status: offline contract verification passed (3 RKE2 versions x 1/3 masters plus unsupported-version negatives). Live acceptance was also run on 2026-11-06 in Dev on a newly provisioned default `v1.35.6+rke2r1` cluster with one control-plane and two workers; storage-class admission defaulting, WaitForFirstConsumer binding, data integrity, cross-worker detach/reattach, online expansion, `Delete`, and `Retain` all behaved as specified (details in the 2026-11-06 change-log entry). The cluster and retained volume were left for inspection after the run and were then cleaned up under separate explicit authorization on 2026-11-06 (see the change-log entry). HA and the `v1.33`/`v1.34` rows remain offline-render-only, so this is not a full production-ready claim.
 
 ## Planned Phases
 
@@ -424,3 +435,18 @@ helm upgrade --install dev-rke2-single . \
     single-master only.
   - public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts.
   - do not add public `6443` and do not alter the baseline or ingress topology behavior.
+
+### 2026-11-06
+
+- Added the OpenStack Cinder CSI bootstrap for new clusters: version-derived image bundle, CSIDriver, controller Deployment, node DaemonSet, prefixed RBAC, and `cinder-delete`/`cinder-retain` StorageClasses appended to `additionalManifest` after the CCM manifest.
+- Reused the existing per-user application credential through a read-only `/etc/rancher/rke2/cloud.conf` file mount; no new credential inputs or embedded Secrets.
+- Recorded the scope boundary: new clusters only, and existing releases must not be upgraded to validate this add-on.
+- Recorded the topology caveat: `ignore-volume-az=true` does not resolve Nova/Cinder availability-zone mismatches; validate AZ compatibility before acceptance.
+- Offline verification: an independent verifier authored `tests/validate-cinder-csi.py`; `python3 tests/validate-cinder-csi.py` passed (6 renders across 3 RKE2 versions x 1/3 masters, plus unsupported-version schema/helper negatives), and `bash tests/validate-openstack-environment.sh` passed. No real cluster or Helm management-cluster lookup was used. Tool versions observed during verification: Helm 4.3.1, Python 3.10.12, PyYAML 6.0.1.
+- Live acceptance ran on 2026-11-06 in Dev from local chart HEAD `f6a28ad` plus the uncommitted CSI work (chart `1.0.5`, Helm revision `1`, installed 16:37Z, cluster ready 17:01Z, test stages 17:08-17:22Z). The new cluster used default RKE2 `v1.35.6+rke2r1` with CSI `v1.35.0` and pinned sidecars, one control-plane node and two workers.
+- Observed results: both StorageClasses correct; a claim omitting `storageClassName` was defaulted to `cinder-delete` at admission, stayed `Pending` under WaitForFirstConsumer until a consumer was scheduled, then bound; consistent PV/PVC/Cinder identity, capacity, type, AZ, and attachment; marker plus 1 MiB write/re-read with matching SHA-256 on both 1 GiB claims (`rbd1`, `nova`, ext4, RWO); graceful worker A -> worker B move with detach/reattach of the same volumes and intact hashes; online 1Gi -> 2Gi expansion in about 11.8s with the same Pod UID, zero restarts, 2 GiB claim/PV/volume, and filesystem growth from 996780 to 2028392 KiB (a 1.2 GiB write also passed, temp file removed); `Delete` removed PVC, PV, and Cinder volume (404 verified twice) in about 5s; `Retain` left the PVC gone, the PV `Released`, and a 1 GiB Cinder volume `available` with no attachments, observed twice over more than 30s.
+- Final independent GET-only verification: 3 Ready nodes, CSI controller `1/1`, node DaemonSet `3/3`, 3 `CSINode` objects, 3 Nova servers `ACTIVE` with three 40 GiB boot volumes plus the retained 1 GiB volume (4 volumes, 121 GiB total), and no leftover test Pods, PVCs, or VolumeAttachments.
+- Scope limits: no live HA and no `v1.33`/`v1.34` runs, so those remain offline-render-only. The run used operator Helm management access but the tenant application credential for provisioning, CSI, and OpenStack cross-checks, and did not test Rancher UI RBAC or password login.
+- The cluster and retained PV/volume were intentionally left for inspection at that point; no cleanup was performed during acceptance and PV finalizers were not mutated. Cleanup followed separately the same day.
+- Cleanup completed on 2026-11-06 under separate explicit authorization: the `Retain` PV was deleted normally (404 at 17:41:24; controllers cleared finalizers with no override), the retained Cinder volume was deleted by exact ID (404 at 17:41:42), and the test namespace was gone at 17:42:01; one `helm uninstall` of the test release in `fleet-default` (with `--wait --timeout 20m`) exited `0` at 17:45:30 and the Rancher CAPI cascade finished at 17:46:21; all three Nova servers, boot volumes, floating IP, VM ports, and test-owned management CAPI/Fleet/cloud-config/kubeconfig objects were removed automatically, with no manual cluster-orphan fallback and no PV finalizer stripping.
+- Independent GET-only cleanup verification passed: Helm release and provisioning/management clusters absent; all five Cinder volume IDs, three Nova servers, floating IP, and VM ports 404; tenant has 0 servers, 0 volumes, and 0 floating IPs; shared user namespace, onboarding Secrets, environment ConfigMap, bootstrap keypair, and tenant/external networks, subnet, and security groups were preserved.

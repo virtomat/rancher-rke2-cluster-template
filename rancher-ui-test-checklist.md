@@ -11,6 +11,7 @@ Operator checklist for creating the validated HA RKE2 cluster from the Rancher U
 - [ ] Local environment ConfigMap exists: `u-<suffix>/rke2-openstack-environment` with keys `authUrl` and `region` (projected by onboarding from the canonical `fleet-default` copy; no `fleet-default` read access is needed)
 - [ ] Baseline OpenStack security group `k8s-rke2` exists with required rules (including the NodePort `30000-32767` rule from the tenant subnet for the HA path)
 - [ ] Public ingress security group `k8s-rke2-public-ingress` exists for the single-master path
+- [ ] No additional storage credential input is required: Cinder CSI reuses the per-user application credential through the node `cloud.conf`
 
 ## Validated Defaults
 
@@ -26,6 +27,7 @@ Operator checklist for creating the validated HA RKE2 cluster from the Rancher U
 | `rke2-ingress-nginx` controller | forced by topology: single master disables its Service and schedules the controller on the control-plane master with host ports `80`/`443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`; HA enables its Service with `type: LoadBalancer` |
 
 - Supported matrix (CCM image is derived from the selected RKE2 version and is not separately configurable): `v1.33.12+rke2r2` -> CCM `v1.33.0`, `v1.34.6+rke2r1` -> CCM `v1.34.0`, `v1.35.6+rke2r1` -> CCM `v1.35.0` (default). Changing the matrix requires a chart release and validation.
+- Storage add-on for new clusters: the same manifest appends OpenStack Cinder CSI after the CCM and creates exactly two StorageClasses, `cinder-delete` (`Delete`, sole default) and `cinder-retain` (`Retain`, non-default). Both use `WaitForFirstConsumer` and `allowVolumeExpansion: true`, default to ext4 through the provisioner, and pin no volume type or availability zone.
 
 ## Single vs HA Topology
 
@@ -74,6 +76,23 @@ The chart selects topology from the effective master count (`nodePoolCounts.mast
 - [ ] All 4 Machines show `Running` status with nodeRefs assigned
 - [ ] Node roles correct: 3 control-plane/etcd, 1 worker
 - [ ] Retain Octavia LB/FIP IDs before cluster deletion; if CCM exits before Service cleanup, remove only the retained test-owned monitors, members, LB, and FIP in that order.
+
+## Cinder CSI And Storage Checks
+
+Scope: Cinder CSI is installed for new clusters only. Do not upgrade an existing release to exercise it, and select the Dev target explicitly before running these checks. Keep this checklist generic and unmarked; record results only from an observed run.
+
+Tested scope note (2026-11-06): the checks below were observed once on a newly provisioned Dev cluster running the default RKE2 `v1.35.6+rke2r1` with one control-plane and two workers, chart `1.0.5` revision `1`. Controller `1/1`, node DaemonSet `3/3`, `CSINode` registration, WaitForFirstConsumer, default-class selection, mount/write/read, cross-worker detach/reattach, online expansion, `Delete`, and `Retain` all behaved as described. The HA topology and the `v1.33.12+rke2r2`/`v1.34.6+rke2r1` rows were not exercised live and remain unverified; that run also did not test Rancher UI RBAC or password login. The retained PV and Cinder volume were subsequently cleaned up under explicit authorization on 2026-11-06, so no test resources remain.
+
+- [ ] CSI controller Deployment `cinder-csi-controller` is available (1/1) and the `cinder-csi-node` DaemonSet is ready on every Linux node, including control-plane nodes
+- [ ] Every node has a `CSINode` object registering `cinder.csi.openstack.org`
+- [ ] Exactly two StorageClasses exist; `cinder-delete` has `storageclass.kubernetes.io/is-default-class: "true"` and `cinder-retain` has it set to `"false"` (not default)
+- [ ] A PVC that omits `storageClassName` stays `Pending` until a consuming Pod is scheduled (WaitForFirstConsumer), then binds through `cinder-delete`; an explicit `storageClassName: ""` opts out of dynamic provisioning
+- [ ] Pod mount, write, and read succeed; where a second worker exists, move the Pod and confirm detach/reattach
+- [ ] Expanding the PVC request grows both the claim and the filesystem when the backend supports it
+- [ ] Delete path: after PVC deletion, the PV follows the `Delete` policy and the Cinder volume is removed
+- [ ] Retain path: with `storageClassName: cinder-retain`, PVC deletion leaves the PV `Released` and the backing Cinder volume present; record the PV name and Cinder volume ID
+- [ ] Retain does not rebind automatically; recovering the data requires manual PV/volume handling, and cleanup removes only the recorded test PV/volume under an authorized run
+- [ ] Snapshots and shared RWX access are not part of this initial add-on and are not expected to work
 
 ## Troubleshooting Notes
 

@@ -185,6 +185,27 @@ chart release and validation.
 {{- end -}}
 
 {{/*
+Map the selected RKE2 Kubernetes version to the exact OpenStack Cinder CSI
+image bundle (driver plus upstream sidecars). The bundle is derived from the
+RKE2 version and is not user configurable. Supported versions are exactly the
+validated matrix; any other version fails rendering with a clear error.
+Upstream provenance: kubernetes/cloud-provider-openstack
+manifests/cinder-csi-plugin at the matching cinder-csi-plugin release tag.
+Changing the matrix requires a chart release and validation.
+*/}}
+{{- define "rancher-cluster-templates.openstackCinderCsiImages" -}}
+{{- $version := .Values.cluster.config.kubernetesVersion -}}
+{{- $v133 := dict "driver" "registry.k8s.io/provider-os/cinder-csi-plugin:v1.33.0" "attacher" "registry.k8s.io/sig-storage/csi-attacher:v4.7.0" "provisioner" "registry.k8s.io/sig-storage/csi-provisioner:v5.1.0" "resizer" "registry.k8s.io/sig-storage/csi-resizer:v1.12.0" "livenessprobe" "registry.k8s.io/sig-storage/livenessprobe:v2.14.0" "registrar" "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0" -}}
+{{- $v134 := dict "driver" "registry.k8s.io/provider-os/cinder-csi-plugin:v1.34.0" "attacher" "registry.k8s.io/sig-storage/csi-attacher:v4.10.0" "provisioner" "registry.k8s.io/sig-storage/csi-provisioner:v5.3.0" "resizer" "registry.k8s.io/sig-storage/csi-resizer:v1.14.0" "livenessprobe" "registry.k8s.io/sig-storage/livenessprobe:v2.17.0" "registrar" "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.15.0" -}}
+{{- $v135 := dict "driver" "registry.k8s.io/provider-os/cinder-csi-plugin:v1.35.0" "attacher" "registry.k8s.io/sig-storage/csi-attacher:v4.10.0" "provisioner" "registry.k8s.io/sig-storage/csi-provisioner:v5.3.0" "resizer" "registry.k8s.io/sig-storage/csi-resizer:v1.14.0" "livenessprobe" "registry.k8s.io/sig-storage/livenessprobe:v2.17.0" "registrar" "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.15.0" -}}
+{{- $bundles := dict "v1.33.12+rke2r2" $v133 "v1.34.6+rke2r1" $v134 "v1.35.6+rke2r1" $v135 -}}
+{{- if not (hasKey $bundles $version) -}}
+{{- fail (printf "Unsupported RKE2 Kubernetes version %q for OpenStack Cinder CSI; supported versions are v1.33.12+rke2r2, v1.34.6+rke2r1, v1.35.6+rke2r1 (changing the matrix requires a chart release and validation)" $version) -}}
+{{- end -}}
+{{- toYaml (index $bundles $version) -}}
+{{- end -}}
+
+{{/*
 Resolve the effective master node count used to select the cluster topology.
 `nodePoolCounts.master` wins when set to a non-empty, non-zero value; otherwise
 the `nodepools` item named `master` provides its `quantity`. The chart supports
