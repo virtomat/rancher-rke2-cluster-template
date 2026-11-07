@@ -177,9 +177,9 @@ chart release and validation.
 */}}
 {{- define "rancher-cluster-templates.openstackCcmImage" -}}
 {{- $version := .Values.cluster.config.kubernetesVersion -}}
-{{- $ccmImages := dict "v1.33.12+rke2r2" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.33.0" "v1.34.6+rke2r1" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.34.0" "v1.35.6+rke2r1" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0" -}}
+{{- $ccmImages := dict "v1.33.13+rke2r2" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.33.0" "v1.34.12+rke2r1" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.34.0" "v1.35.9+rke2r1" "registry.k8s.io/provider-os/openstack-cloud-controller-manager:v1.35.0" -}}
 {{- if not (hasKey $ccmImages $version) -}}
-{{- fail (printf "Unsupported RKE2 Kubernetes version %q; supported versions are v1.33.12+rke2r2, v1.34.6+rke2r1, v1.35.6+rke2r1 (changing the matrix requires a chart release and validation)" $version) -}}
+{{- fail (printf "Unsupported RKE2 Kubernetes version %q; supported versions are v1.33.13+rke2r2, v1.34.12+rke2r1, v1.35.9+rke2r1 (changing the matrix requires a chart release and validation)" $version) -}}
 {{- end -}}
 {{- index $ccmImages $version -}}
 {{- end -}}
@@ -198,9 +198,9 @@ Changing the matrix requires a chart release and validation.
 {{- $v133 := dict "driver" "registry.k8s.io/provider-os/cinder-csi-plugin:v1.33.0" "attacher" "registry.k8s.io/sig-storage/csi-attacher:v4.7.0" "provisioner" "registry.k8s.io/sig-storage/csi-provisioner:v5.1.0" "resizer" "registry.k8s.io/sig-storage/csi-resizer:v1.12.0" "livenessprobe" "registry.k8s.io/sig-storage/livenessprobe:v2.14.0" "registrar" "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0" -}}
 {{- $v134 := dict "driver" "registry.k8s.io/provider-os/cinder-csi-plugin:v1.34.0" "attacher" "registry.k8s.io/sig-storage/csi-attacher:v4.10.0" "provisioner" "registry.k8s.io/sig-storage/csi-provisioner:v5.3.0" "resizer" "registry.k8s.io/sig-storage/csi-resizer:v1.14.0" "livenessprobe" "registry.k8s.io/sig-storage/livenessprobe:v2.17.0" "registrar" "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.15.0" -}}
 {{- $v135 := dict "driver" "registry.k8s.io/provider-os/cinder-csi-plugin:v1.35.0" "attacher" "registry.k8s.io/sig-storage/csi-attacher:v4.10.0" "provisioner" "registry.k8s.io/sig-storage/csi-provisioner:v5.3.0" "resizer" "registry.k8s.io/sig-storage/csi-resizer:v1.14.0" "livenessprobe" "registry.k8s.io/sig-storage/livenessprobe:v2.17.0" "registrar" "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.15.0" -}}
-{{- $bundles := dict "v1.33.12+rke2r2" $v133 "v1.34.6+rke2r1" $v134 "v1.35.6+rke2r1" $v135 -}}
+{{- $bundles := dict "v1.33.13+rke2r2" $v133 "v1.34.12+rke2r1" $v134 "v1.35.9+rke2r1" $v135 -}}
 {{- if not (hasKey $bundles $version) -}}
-{{- fail (printf "Unsupported RKE2 Kubernetes version %q for OpenStack Cinder CSI; supported versions are v1.33.12+rke2r2, v1.34.6+rke2r1, v1.35.6+rke2r1 (changing the matrix requires a chart release and validation)" $version) -}}
+{{- fail (printf "Unsupported RKE2 Kubernetes version %q for OpenStack Cinder CSI; supported versions are v1.33.13+rke2r2, v1.34.12+rke2r1, v1.35.9+rke2r1 (changing the matrix requires a chart release and validation)" $version) -}}
 {{- end -}}
 {{- toYaml (index $bundles $version) -}}
 {{- end -}}

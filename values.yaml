@@ -91,7 +91,7 @@ cluster:
     # defaultPodSecurityPolicyTemplateName:
     # enableNetworkPolicy:  # Default: false
 
-    kubernetesVersion: "v1.35.6+rke2r1"
+    kubernetesVersion: "v1.35.9+rke2r1"
 
     # enable local auth endpoint
     localClusterAuthEndpoint:
@@ -131,6 +131,11 @@ cluster:
 
       # CNI plugins: Canal, Cilium, Calico and Flannel
       cni: calico
+
+      # The chart forces `ingress-controller: [traefik]` in the rendered
+      # Cluster so the packaged RKE2 Traefik add-on is the only ingress
+      # controller. RKE2 auto-disables rke2-ingress-nginx when it is not
+      # selected; no standalone or external ingress chart is installed.
 
       # Do not deploy packaged components and delete any deployed components (valid items: rke2-coredns, rke2-ingress-nginx, rke2-kube-proxy, rke2-metrics-server)
       # disable:
@@ -211,16 +216,75 @@ cluster:
     #     # skipWaitForDeleteTimeoutSeconds: 0
     #     # timeout: 120
 
-    # The rke2-ingress-nginx controller service is forced by the template from
-    # the effective master count: single master disables it (node floating IP +
-    # host ports serve ingress); HA (>=3 masters) enables it as a LoadBalancer
-    # served by CCM/Octavia. The default here matches the default single-master
-    # topology; conflicting user chartValues are overridden by that logic.
+    # Packaged RKE2 Traefik add-on (rke2-traefik) Gateway baseline. The chart
+    # forces the topology and Gateway invariants below from the effective master
+    # count; user chartValues may add resources such as extra Gateway listeners
+    # but cannot replace these values.
+    #
+    # Single master (default): one Traefik DaemonSet pinned by the template to
+    # Linux control-plane nodes (with control-plane/etcd tolerations), host
+    # ports 80/443, ClusterIP Service reached through the node's existing
+    # floating IP. HA (>=3 masters): one Traefik DaemonSet with hostPorts
+    # cleared and a single LoadBalancer Service served by CCM/Octavia, with no
+    # single-master nodeSelector or tolerations forced.
+    #
+    # The Gateway listener port is the internal packaged entrypoint port (8000);
+    # the Service/hostPort mapping publishes it as external port 80. The Gateway
+    # serves HTTP only by default: no HTTPS listener, Certificate, Secret,
+    # issuer, or certificateRef is embedded. External port 443 and the websecure
+    # entrypoint remain published/allocated so an administrator can add HTTPS
+    # listeners later; they are not a claim that HTTPS is served now. The
+    # websecure entrypoint's global self-signed TLS default is disabled so no
+    # certificate is generated or served until a Gateway HTTPS listener with
+    # certificateRefs is configured.
     chartValues:
-      rke2-ingress-nginx:
-        controller:
-          service:
+      rke2-traefik:
+        deployment:
+          kind: DaemonSet
+        hostNetwork: false
+        ingressClass:
+          enabled: false
+        gateway:
+          enabled: true
+          name: shared-gateway
+          namespace: kube-system
+          listeners:
+            web:
+              port: 8000
+              protocol: HTTP
+              namespacePolicy:
+                from: Selector
+                selector:
+                  matchLabels:
+                    gateway-access: public
+        gatewayClass:
+          enabled: true
+          name: traefik
+        providers:
+          kubernetesCRD:
             enabled: false
+          kubernetesGateway:
+            enabled: true
+            experimentalChannel: false
+          kubernetesIngress:
+            enabled: false
+          kubernetesIngressNGINX:
+            enabled: false
+        service:
+          enabled: true
+          single: true
+          spec:
+            type: ClusterIP
+        ports:
+          web:
+            port: 8000
+            hostPort: 80
+          websecure:
+            port: 8443
+            hostPort: 443
+            http:
+              tls:
+                enabled: false
 
 nodepools:
   - name: master

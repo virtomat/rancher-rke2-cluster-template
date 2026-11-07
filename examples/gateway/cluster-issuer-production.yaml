@@ -1,0 +1,23 @@
+# Optional production ACME issuer. Keep the name distinct from the staging
+# issuer and create it only after DNS and HTTP-01 reachability are verified.
+# Replace the placeholder email. Then update the Certificate's issuerRef.name
+# to letsencrypt-production and wait for Ready=True; do not delete the TLS
+# Secret or private key to force reissuance.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+spec:
+  acme:
+    email: admin@example.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-production-account-key
+    solvers:
+      - http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: shared-gateway
+                namespace: kube-system
+                kind: Gateway
+                sectionName: web

@@ -1,3 +1,14 @@
+# 1.1.0 (2026-11-06, UNRELEASED)
+
+## Changes:
+- feat: Advance the supported RKE2 matrix to `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default); Rancher 2.14.3 supports Kubernetes 1.33-1.35 only, so no 1.36/1.37 path is offered.
+- feat: Replace the legacy NGINX ingress contract with the packaged `rke2-traefik` Gateway baseline: forced `ingress-controller: [traefik]`, GatewayClass `traefik`, Gateway `kube-system/shared-gateway`, default HTTP `web` listener on internal `8000`/external `80`, namespace opt-in `gateway-access: public`, and no default HTTPS/TLS material.
+- feat: Keep single-master host ports and `ClusterIP` publication through the master floating IP; use one `LoadBalancer` Service with host ports cleared in HA. External `443`/`websecure` remain published and ready for administrator-added HTTPS listeners.
+- docs: Add `docs/gateway-api.md` and non-secret `examples/gateway/` for per-domain cert-manager TLS, staging-first issuance, narrow cross-namespace `ReferenceGrant`, HTTP-01 through the shared `web` listener, and listener merge into Rancher `Cluster` chartValues. The template does not install cert-manager or bootstrap issuers, domains, emails, or DNS credentials.
+- docs: Refresh README, Rancher UI checklist, update plan, root internal guide, and security-group tuning references for the Gateway baseline; preserve the historical `v1.35.6+rke2r1` Cinder live-acceptance record and cleanup confirmation.
+- test: Document `python3 tests/validate-gateway.py --require-packaged-charts` with the optional offline `RKE2_TRAEFIK_CHART_DIR` package cache and official RKE2 Traefik chart source URLs; no packages or unverified SHAs are vendored.
+- note: `1.1.0` is an unreleased source baseline. The new patch matrix, Gateway baseline, and TLS onboarding completed independent offline verification; live routing, TLS/ACME issuance, CRD bootstrap convergence, and fresh patch-matrix acceptance remain live gates. No tag or release publication is implied.
+
 # v2.0.1
 
 ## Changes:

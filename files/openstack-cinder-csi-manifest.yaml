@@ -9,9 +9,9 @@
 # manifests/cinder-csi-plugin for the matching driver release, with every image
 # pinned by the chart's RKE2 version matrix instead of an upstream `latest` tag.
 # Upstream provenance:
-#   RKE2 v1.33.12+rke2r2 -> cinder-csi-plugin v1.33.0
-#   RKE2 v1.34.6+rke2r1  -> cinder-csi-plugin v1.34.0
-#   RKE2 v1.35.6+rke2r1  -> cinder-csi-plugin v1.35.0
+#   RKE2 v1.33.13+rke2r2 -> cinder-csi-plugin v1.33.0
+#   RKE2 v1.34.12+rke2r1 -> cinder-csi-plugin v1.34.0
+#   RKE2 v1.35.9+rke2r1  -> cinder-csi-plugin v1.35.0
 #   https://github.com/kubernetes/cloud-provider-openstack/tree/<driver-tag>/manifests/cinder-csi-plugin
 #
 # Scope is block storage only: no snapshot controller, snapshot CRDs, or

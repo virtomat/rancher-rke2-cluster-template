@@ -1,0 +1,11 @@
+# Optional cert-manager installation configuration. This is NOT a managed
+# chart add-on and the cluster template does not install cert-manager.
+# Use a verified, pinned cert-manager 1.21 patch selected by the administrator.
+#
+# The Gateway API CRDs must exist before the cert-manager controller starts.
+# The packaged rke2-traefik CRD bundle supplies them for new clusters.
+crds:
+  enabled: true
+config:
+  gatewayAPI:
+    enabled: true

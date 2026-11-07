@@ -83,15 +83,15 @@ questions:
     group: 'General'
     show_if: configMode=Advanced
   - variable: cluster.config.kubernetesVersion
-    default: v1.35.6+rke2r1
-    description: 'RKE2 Kubernetes version; the matching OpenStack CCM image is derived automatically from this version and is not separately configurable. Supported: v1.33.12+rke2r2, v1.34.6+rke2r1, v1.35.6+rke2r1.'
+    default: v1.35.9+rke2r1
+    description: 'RKE2 Kubernetes version; the matching OpenStack CCM image is derived automatically from this version and is not separately configurable. Supported: v1.33.13+rke2r2, v1.34.12+rke2r1, v1.35.9+rke2r1.'
     label: 'Kubernetes Version'
     type: enum
     required: true
     options:
-      - v1.33.12+rke2r2
-      - v1.34.6+rke2r1
-      - v1.35.6+rke2r1
+      - v1.33.13+rke2r2
+      - v1.34.12+rke2r1
+      - v1.35.9+rke2r1
     group: 'General'
   - variable: cluster.config.openstack.enabled
     description: 'Show General Openstack Configs'

@@ -71,12 +71,53 @@ spec:
 {{ include "rancher-cluster-templates.openstackCinderCsiManifest" . | indent 6 }}
 
     {{- $chartValues := .Values.cluster.config.chartValues | default dict | deepCopy }}
-    {{- $ingressValues := dict "controller" (dict "service" (dict "enabled" false) "hostPort" (dict "enabled" true "ports" (dict "http" 80 "https" 443)) "nodeSelector" (dict "kubernetes.io/os" "linux" "node.kubernetes.io/control-plane" "true") "tolerations" (list (dict "key" "node-role.kubernetes.io/control-plane" "operator" "Exists" "effect" "NoSchedule") (dict "key" "node-role.kubernetes.io/etcd" "operator" "Exists" "effect" "NoExecute"))) }}
+    {{- $traefikBaseline := dict
+        "deployment" (dict "kind" "DaemonSet")
+        "hostNetwork" false
+        "ingressClass" (dict "enabled" false)
+        "gateway" (dict
+          "enabled" true
+          "name" "shared-gateway"
+          "namespace" "kube-system"
+          "listeners" (dict
+            "web" (dict
+              "port" 8000
+              "protocol" "HTTP"
+              "namespacePolicy" (dict
+                "from" "Selector"
+                "selector" (dict "matchLabels" (dict "gateway-access" "public"))))))
+        "gatewayClass" (dict "enabled" true "name" "traefik")
+        "providers" (dict
+          "kubernetesCRD" (dict "enabled" false)
+          "kubernetesGateway" (dict "enabled" true "experimentalChannel" false)
+          "kubernetesIngress" (dict "enabled" false)
+          "kubernetesIngressNGINX" (dict "enabled" false))
+        "service" (dict "enabled" true "single" true)
+        "ports" (dict
+          "web" (dict "port" 8000)
+          "websecure" (dict
+            "port" 8443
+            "http" (dict "tls" (dict "enabled" false)))) }}
     {{- if ge $masterCount 3 }}
-    {{- $ingressValues = dict "controller" (dict "service" (dict "enabled" true "type" "LoadBalancer")) }}
+    {{- $_ := mergeOverwrite $traefikBaseline (dict "service" (dict "spec" (dict "type" "LoadBalancer"))) }}
+    {{- else }}
+    {{- $_ := mergeOverwrite $traefikBaseline (dict
+        "service" (dict "spec" (dict "type" "ClusterIP"))
+        "ports" (dict
+          "web" (dict "hostPort" 80)
+          "websecure" (dict "hostPort" 443))
+        "nodeSelector" (dict "kubernetes.io/os" "linux" "node.kubernetes.io/control-plane" "true")
+        "tolerations" (list
+          (dict "key" "node-role.kubernetes.io/control-plane" "operator" "Exists" "effect" "NoSchedule")
+          (dict "key" "node-role.kubernetes.io/etcd" "operator" "Exists" "effect" "NoExecute"))) }}
     {{- end }}
-    {{- $existingIngress := deepCopy (default dict (index $chartValues "rke2-ingress-nginx")) }}
-    {{- $_ := set $chartValues "rke2-ingress-nginx" (mergeOverwrite $existingIngress $ingressValues) }}
+    {{- $traefikValues := mergeOverwrite (deepCopy (default dict (index $chartValues "rke2-traefik"))) $traefikBaseline }}
+    {{- if ge $masterCount 3 }}
+    {{- $traefikPorts := index $traefikValues "ports" }}
+    {{- $_ := set (index $traefikPorts "web") "hostPort" nil }}
+    {{- $_ := set (index $traefikPorts "websecure") "hostPort" nil }}
+    {{- end }}
+    {{- $_ := set $chartValues "rke2-traefik" $traefikValues }}
     chartValues:
       {{- toYaml $chartValues | nindent 6 }}
     # chartValues:
@@ -114,6 +155,11 @@ spec:
       {{- if .Values.cluster.config.machineGlobalConfig.cni }}
       cni: {{ .Values.cluster.config.machineGlobalConfig.cni }}
       {{- end }}
+
+      # Select only the packaged Traefik ingress controller. RKE2 auto-disables
+      # ingress-nginx for any valid controller that is not selected; this does
+      # not install an external chart or CRD bundle.
+      ingress-controller: ["traefik"]
       {{- if .Values.cluster.config.machineGlobalConfig.docker }}
       docker: {{ .Values.cluster.config.machineGlobalConfig.docker }}
       {{- end }}

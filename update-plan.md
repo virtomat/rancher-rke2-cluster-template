@@ -11,19 +11,22 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 
 ## Current Status
 
-- Phase: planning and initial documentation cleanup
-- Current baseline: imported chart under review
-- Current validation target: Dev environment
-- Branch split status: `dev` branch created from `main`; shared cleanup now continues on `dev`
+- Phase: Traefik Gateway baseline and `1.1.0` documentation/examples implemented; offline verification and default-pin live acceptance completed, while the full patch matrix and Rancher UI path remain open
+- Current baseline: chart `1.1.0` with RKE2 `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default)
+- Current validation target: Dev. Live acceptance covers the Gateway baseline and TLS on default `v1.35.9+rke2r1` for single-node and 3CP+2W HA; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only
+- Branch split status: `dev` branch; no existing cluster upgrade or migration is part of this baseline
+- Release status: `1.1.0` is an unreleased source baseline; no tag, artifact publication, or Git commit/push is implied by the live acceptance
 
 ## Progress
 
 - [x] Create `dev` branch from current `main`
 - [x] Add a shared `update-plan.md` tracker for both branches
 - [x] Add a README status note and maintained-files index
-- [ ] Align top-level documentation with actual chart behavior
+- [x] Align current documentation with the Traefik Gateway baseline and patch matrix
 - [ ] Fix `values.yaml`, `questions.yaml`, and `templates/` mismatches
 - [ ] Validate generic cleanup in Dev
+- [x] Run default-pin Gateway/TLS live acceptance for single-node and 3CP+2W HA with qualified availability
+- [ ] Run live coverage for the remaining `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins
 - [ ] Merge shared cleanup baseline into `main`
 - [ ] Start Prod-specific adaptation on `main`
 
@@ -332,6 +335,7 @@ helm upgrade --install dev-rke2-single . \
 
 - Run `helm lint`.
 - Run the offline Cinder CSI contract test: `python3 tests/validate-cinder-csi.py` (requires `helm` and Python 3 with PyYAML). It renders the real chart from a temporary copy with synthetic `lookup` fixtures only; production templates stay fail-closed.
+- Run the offline Gateway contract test: `python3 tests/validate-gateway.py --require-packaged-charts` (requires `helm` and Python 3 with PyYAML). Set `RKE2_TRAEFIK_CHART_DIR` to the optional offline package cache; the packages are not vendored and the test does not download them.
 - Render with default values.
 - Render with `nodePoolTemplate=SinglePool`.
 - Render with `nodePoolTemplate=MultiPool`.
@@ -372,6 +376,18 @@ helm upgrade --install dev-rke2-single . \
 - Limits: plain filesystem RWO only; no snapshot support and no shared RWX.
 - Topology: the shared `cloud.conf` `ignore-volume-az = true` does not by itself reconcile Nova/Cinder availability zones. Upstream defaults request the node topology AZ, so validate AZ compatibility before acceptance and design separate availability configuration for mismatched zones rather than disabling the check blindly.
 - Status: offline contract verification passed (3 RKE2 versions x 1/3 masters plus unsupported-version negatives). Live acceptance was also run on 2026-11-06 in Dev on a newly provisioned default `v1.35.6+rke2r1` cluster with one control-plane and two workers; storage-class admission defaulting, WaitForFirstConsumer binding, data integrity, cross-worker detach/reattach, online expansion, `Delete`, and `Retain` all behaved as specified (details in the 2026-11-06 change-log entry). The cluster and retained volume were left for inspection after the run and were then cleaned up under separate explicit authorization on 2026-11-06 (see the change-log entry). HA and the `v1.33`/`v1.34` rows remain offline-render-only, so this is not a full production-ready claim.
+
+## Gateway API Ingress Baseline (Chart 1.1.0, New Clusters)
+
+- Scope: new clusters only. Do not upgrade or migrate an existing NGINX or other ingress path to this baseline as part of this work.
+- Controller: the chart forces `ingress-controller: [traefik]`; RKE2 auto-disables the unselected packaged NGINX controller. The packaged `rke2-traefik` chart owns GatewayClass `traefik`, Gateway `kube-system/shared-gateway`, the Traefik workload, and its Service. No Gateway or GatewayClass is embedded in `additionalManifest`.
+- Default listener: `web` HTTP on packaged port `8000`, published externally as `80`, with namespace opt-in selector `gateway-access: public`. External `443` and the `websecure` entrypoint are published/allocated, but no HTTPS listener, Certificate, Secret, issuer, or `certificateRefs` is configured by default. Global websecure TLS is disabled; TLS is per listener.
+- Topology: single master pins the Traefik DaemonSet to Linux control-plane nodes with control-plane/etcd tolerations, host ports `80`/`443`, and a `ClusterIP` Service reached through the master floating IP. HA keeps one DaemonSet, clears host ports, and uses one `LoadBalancer` Service served by CCM/Octavia. Gateway status is empty in host-port mode and HA copies the LoadBalancer status; DNS against the master floating IP stays manual, with no custom discovery or ExternalDNS controller.
+- Security contract: unchanged. The HA `manage-security-groups = false` contract, onboarding-managed `k8s-rke2` NodePort rule, `lb-sg-*` prohibition, never attached in HA public ingress group, and no public `6443` rules remain authoritative.
+- TLS onboarding: documented in `docs/gateway-api.md` with non-secret examples in `examples/gateway/`. The application owns `HTTPRoute`, per-domain `Certificate`, cert-manager TLS Secret, and narrow `ReferenceGrant`; the administrator owns Gateway listeners, namespace opt-in, cert-manager installation/configuration, and issuers.
+- cert-manager: not installed by the template. A compatible pinned cert-manager is an integration prerequisite. For new installs, use a verified patch from the current 1.21 line (1.21 supports Kubernetes 1.33-1.36; 1.20 supports 1.32-1.35). The exact patch pin is an administrator choice and is not invented here.
+- Gateway CRDs: must exist before cert-manager starts. The packaged Traefik CRD bundle supplies them for new clusters. RKE2 installs the packaged Traefik main and CRD HelmCharts asynchronously with no explicit dependency; the initial Traefik Helm job may retry until the Gateway API CRDs are established. Persistent failure requires HelmChart/job/event inspection, not automatic deletes/restarts/uninstalls/custom repair or a cert-manager restart.
+- Verification: independent offline verification completed on 2026-11-06 (Gateway 399 checks, CSI 1379 checks, static shell PASS). These are local render/static results only; live routing, HTTPS/ACME issuance, fresh-bootstrap CRD convergence, and new-patch CSI acceptance remain live gates. Existing Cinder live acceptance remains historical and used `v1.35.6+rke2r1`.
 
 ## Planned Phases
 
@@ -450,3 +466,31 @@ helm upgrade --install dev-rke2-single . \
 - The cluster and retained PV/volume were intentionally left for inspection at that point; no cleanup was performed during acceptance and PV finalizers were not mutated. Cleanup followed separately the same day.
 - Cleanup completed on 2026-11-06 under separate explicit authorization: the `Retain` PV was deleted normally (404 at 17:41:24; controllers cleared finalizers with no override), the retained Cinder volume was deleted by exact ID (404 at 17:41:42), and the test namespace was gone at 17:42:01; one `helm uninstall` of the test release in `fleet-default` (with `--wait --timeout 20m`) exited `0` at 17:45:30 and the Rancher CAPI cascade finished at 17:46:21; all three Nova servers, boot volumes, floating IP, VM ports, and test-owned management CAPI/Fleet/cloud-config/kubeconfig objects were removed automatically, with no manual cluster-orphan fallback and no PV finalizer stripping.
 - Independent GET-only cleanup verification passed: Helm release and provisioning/management clusters absent; all five Cinder volume IDs, three Nova servers, floating IP, and VM ports 404; tenant has 0 servers, 0 volumes, and 0 floating IPs; shared user namespace, onboarding Secrets, environment ConfigMap, bootstrap keypair, and tenant/external networks, subnet, and security groups were preserved.
+
+#### Gateway API Baseline And 1.1.0 Documentation (2026-11-06)
+
+- Advanced the supported RKE2 matrix to `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default). The latest live Rancher observed for this workspace is 2.14.3, whose official support matrix covers Kubernetes 1.33-1.35 only; no 1.36/1.37 offer or upgrade was added.
+- Replaced the legacy ingress contract with the packaged `rke2-traefik` Gateway baseline: forced `ingress-controller: [traefik]`, disabled legacy Ingress/NGINX compatibility/native Traefik CRD providers and the unused IngressClass, and kept one GatewayClass `traefik` plus Gateway `kube-system/shared-gateway` owned by the packaged chart rather than `additionalManifest`.
+- Default `web` listener is HTTP on packaged port `8000`, published externally as `80`, with namespace opt-in `gateway-access: public`. External `443`/`websecure` remain published/allocated, but no HTTPS listener, Certificate, Secret, issuer, or `certificateRefs` is installed by default; global websecure TLS is disabled and TLS is per listener.
+- Single master keeps the Traefik DaemonSet on Linux control-plane nodes with host ports `80`/`443`, a `ClusterIP` Service reached through the master floating IP, and the existing public ingress group. HA clears host ports and uses one `LoadBalancer` Service served by CCM/Octavia. Gateway status stays empty in host-port mode and HA copies the LoadBalancer status; DNS remains manual with no custom discovery or ExternalDNS controller.
+- Security contract unchanged: `manage-security-groups = false`, onboarding-managed static `k8s-rke2` NodePort rule, no per-LB `lb-sg-*`, public ingress group never attached in HA, and no public `6443`.
+- Added `docs/gateway-api.md` and non-secret `examples/gateway/` covering administrator/application ownership, per-domain cert-manager Certificates, staging-first issuance, narrow cross-namespace ReferenceGrant (`v1beta1` because the packaged Gateway API bundles serve both v1 and v1beta1), HTTP-01 via the shared `web` listener, and listener merge into Rancher `Cluster` chartValues. The template does not install cert-manager, issuers, domains, emails, or DNS credentials.
+- cert-manager integration is documented as an administrator prerequisite. The verified current 1.21 chart enables Gateway API with `config.gatewayAPI.enabled: true` and CRDs with `crds.enabled: true` (not the earlier `config.enableGatewayAPI` claim). New installs should use a verified pinned 1.21 patch; Gateway CRDs must exist before cert-manager starts, with no restart workaround.
+- Bumped source `Chart.yaml` from `1.0.5` to `1.1.0`; README, checklist, and update plan now carry `1.1.0` and the three new pins. This is an unreleased source baseline with no tag, CI, or publication implied.
+- Independent offline verification completed on 2026-11-06: `python3 tests/validate-gateway.py --require-packaged-charts` passed 399 checks, `python3 tests/validate-cinder-csi.py` passed 1379 checks, and `bash tests/validate-openstack-environment.sh` passed. The Gateway run used the optional `RKE2_TRAEFIK_CHART_DIR` offline cache; official packaged chart sources are `https://github.com/rancher/rke2-charts/raw/main/assets/rke2-traefik/rke2-traefik-40.1.009.tgz` and `https://github.com/rancher/rke2-charts/raw/main/assets/rke2-traefik-1.34-1.36/rke2-traefik-40.1.013.tgz`; packages are not vendored and no unverified SHA is hardcoded.
+- Remaining live gates: actual routing, HTTPS/ACME issuance, the packaged Traefik main/CRD HelmChart startup-retry path, fresh-bootstrap CRD convergence, and new-patch CSI acceptance. No existing cluster was upgraded or migrated. The 2026-11-06 `v1.35.6+rke2r1` Cinder live acceptance remains historical.
+
+### 2026-11-07
+
+#### Gateway API And TLS Live Acceptance (Run 2026-11-06 UTC)
+
+- Ran from the unreleased, uncommitted `1.1.0` Dev worktree at `0721620` (`values.yaml` SHA-256 `b093deae...`, source `templates/cluster.yaml` SHA-256 `193d6656...`). No commit, push, tag, or artifact release was made, and no template source changed during the run.
+- Provisioned a fresh single node (`SinglePool`) and a fresh 3CP+2W HA cluster (`MultiPool`) on default RKE2 `v1.35.9+rke2r1`; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only, so the patch matrix is not fully live-accepted. Provisioning was CLI/Helm based; Rancher UI RBAC and password login were not tested.
+- Bootstrap converged normally on both. The packaged `rke2-traefik` Helm job retried twice until the Gateway API CRDs were established; no manual repair was needed.
+- Single node published Traefik on the node floating IP with host ports `80`/`443`, a `ClusterIP` Service, and no Gateway status address. HA kept nodes private and used one Octavia amphora `LoadBalancer` with NodePorts `80:31234` and `443:31506`; the Gateway address was the load-balancer floating IP. One reachable external IPv4 required running the stages sequentially.
+- Public HTTP returned `200` on both. An unlabeled namespace route was rejected with `NotAllowedByListeners` (not asserted as `404`, because an allowed fallback route can serve the path). Per-domain cert-manager `1.21.3` HTTPS passed with normal trust, exact SNI/SAN, a named-Secret `ReferenceGrant`, and one certificate/listener reused by a second namespace. Listeners were added only through the owning Rancher provisioning `Cluster` chartValues.
+- Staging issuance, exactly one controlled staging renewal per cluster with `cmctl 2.6.2` (revision 1 -> 2, new serial/fingerprint served without restart), and production issuance on a fresh issuer (revision 3) prove controlled reissuance and hot reload. They do not exercise the natural 90-day scheduler or production rotation. HA recorded valid Order/`DomainVerified`/Ready CertificateRequest but missed the direct public HTTP-01 `200`/key-auth probe; the single-node stage captured that probe once.
+- HA availability was qualified, not zero-downtime: one application Pod delete gave HTTP 149/149 and HTTPS 148/149 (one transient `502`), and one Traefik Pod delete gave HTTP 160/160 and HTTPS 160/160. No whole-node, control-plane, network, or amphora failure was tested; the amphora was `STANDALONE`.
+- CCM/CSI were healthy on both (`CSINode` 1 and 5, both StorageClasses present). No new PVC I/O, expansion, reattach, or reclaim test was run; the earlier `v1.35.6+rke2r1` CSI acceptance remains historical.
+- Both clusters and their DNS records were cleaned up and independently verified: tenant servers/volumes/floating IPs/load balancers are zero, baseline ports and the three security groups/13 rules are unchanged, onboarding resources and the existing `test` cluster are preserved, and both test names return `NXDOMAIN`. HA teardown disabled `rke2-traefik.service.enabled` in the owning test `Cluster` chartValues and removed only the test HTTPS listener so packaged Helm deleted the Service, CCM requested load-balancer deletion, and Octavia removed the load balancer, VIP, service compute, and amphora as part of that LB cleanup; CCM removed the floating IP. Rancher CAPI then removed the Kubernetes nodes, boot volumes, and ports, and does not own the amphora or VIP.
+- Details and limits: [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md).

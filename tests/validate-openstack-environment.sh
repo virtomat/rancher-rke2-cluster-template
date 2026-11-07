@@ -225,10 +225,10 @@ fi
 
 rg -Fq '{{- if $nodepool.openstackconfig.volumeType }}' "$node_config"
 
-rg -Fq 'kubernetesVersion: "v1.35.6+rke2r1"' "$values"
+rg -Fq 'kubernetesVersion: "v1.35.9+rke2r1"' "$values"
 version_question=$(rg -A 14 -F 'variable: cluster.config.kubernetesVersion' "$questions")
-printf '%s\n' "$version_question" | rg -Fq 'default: v1.35.6+rke2r1'
-for supported_version in v1.33.12+rke2r2 v1.34.6+rke2r1 v1.35.6+rke2r1; do
+printf '%s\n' "$version_question" | rg -Fq 'default: v1.35.9+rke2r1'
+for supported_version in v1.33.13+rke2r2 v1.34.12+rke2r1 v1.35.9+rke2r1; do
   printf '%s\n' "$version_question" | rg -Fq -- "- $supported_version"
 done
 for dropped_version in v1.31.13+rke2r1 v1.32.9+rke2r1; do
@@ -242,7 +242,7 @@ printf '%s\n' "$version_question" | rg -Fq 'CCM image is derived automatically'
 schema="$chart_dir/values.schema.json"
 rg -Fq '"kubernetesVersion"' "$schema"
 rg -Fq '"enum"' "$schema"
-for supported_version in v1.33.12+rke2r2 v1.34.6+rke2r1 v1.35.6+rke2r1; do
+for supported_version in v1.33.13+rke2r2 v1.34.12+rke2r1 v1.35.9+rke2r1; do
   rg -Fq "\"$supported_version\"" "$schema"
 done
 assert_absent 'v1\.31|v1\.32' "$schema"
@@ -261,7 +261,7 @@ rg -Fq 'tpl $manifest .' "$ccm_helper"
 rg -Fq 'image: {{ include "rancher-cluster-templates.openstackCcmImage" . }}' "$ccm_manifest"
 assert_absent 'openstack-cloud-controller-manager:v1\.3[345]\.0' "$ccm_manifest"
 rg -Fq 'define "rancher-cluster-templates.openstackCcmImage"' "$helper"
-for pair in v1.33.12+rke2r2:v1.33.0 v1.34.6+rke2r1:v1.34.0 v1.35.6+rke2r1:v1.35.0; do
+for pair in v1.33.13+rke2r2:v1.33.0 v1.34.12+rke2r1:v1.34.0 v1.35.9+rke2r1:v1.35.0; do
   version=${pair%%:*}
   tag=${pair#*:}
   rg -Fq "$version" "$helper"
@@ -278,17 +278,25 @@ rg -Fq 'Master node count must be exactly 1 (single master) or at least 3 (HA)' 
 rg -Fq 'include "rancher-cluster-templates.masterCount" $ | int' "$cluster"
 rg -Fq 'deepCopy' "$cluster"
 rg -Fq 'mergeOverwrite' "$cluster"
-rg -Fq 'rke2-ingress-nginx' "$cluster"
-rg -Fq 'dict "enabled" false' "$cluster"
-rg -Fq '"hostPort" (dict "enabled" true "ports" (dict "http" 80 "https" 443))' "$cluster"
+rg -Fq 'ingress-controller: ["traefik"]' "$cluster"
+assert_absent 'rke2-ingress-nginx' "$cluster"
+rg -Fq '"rke2-traefik"' "$cluster"
+rg -Fq '"kubernetesGateway" (dict "enabled" true "experimentalChannel" false)' "$cluster"
+rg -Fq '"kubernetesCRD" (dict "enabled" false)' "$cluster"
+rg -Fq '"ingressClass" (dict "enabled" false)' "$cluster"
+rg -Fq '"http" (dict "tls" (dict "enabled" false))' "$cluster"
+rg -Fq '"kubernetesIngressNGINX" (dict "enabled" false)' "$cluster"
+rg -Fq '"gateway-access" "public"' "$cluster"
+rg -Fq '"hostPort" nil' "$cluster"
+rg -Fq '"service" (dict "enabled" true "single" true)' "$cluster"
+rg -Fq 'dict "type" "LoadBalancer"' "$cluster"
+rg -Fq 'dict "type" "ClusterIP"' "$cluster"
 rg -Fq '"nodeSelector" (dict "kubernetes.io/os" "linux" "node.kubernetes.io/control-plane" "true")' "$cluster"
-rg -Fq '"tolerations" (list (dict "key" "node-role.kubernetes.io/control-plane" "operator" "Exists" "effect" "NoSchedule") (dict "key" "node-role.kubernetes.io/etcd" "operator" "Exists" "effect" "NoExecute"))' "$cluster"
-rg -Fq 'dict "enabled" true "type" "LoadBalancer"' "$cluster"
-ha_ingress_values=$(rg -F 'dict "enabled" true "type" "LoadBalancer"' "$cluster")
-if printf '%s\n' "$ha_ingress_values" | rg -q -e 'hostPort|nodeSelector|tolerations'; then
-  printf '%s\n' "HA ingress values must not override hostPort, nodeSelector, or tolerations" >&2
-  exit 1
-fi
+rg -Fq '"tolerations" (list' "$cluster"
+rg -Fq '"effect" "NoSchedule"' "$cluster"
+rg -Fq '"effect" "NoExecute"' "$cluster"
+rg -Fq 'rke2-traefik:' "$values"
+assert_absent 'rke2-ingress-nginx:' "$values"
 
 rg -Fq 'variable: cluster.config.localClusterAuthEndpoint.fqdn' "$questions"
 rg -Fq 'variable: cluster.config.localClusterAuthEndpoint.caCerts' "$questions"
@@ -305,9 +313,9 @@ rg -Fq 'include "rancher-cluster-templates.derivedNamespace" $root' "$cluster_ro
 assert_absent 'include "rancher-cluster-templates\.derivedNamespace" \.' "$cluster_role_binding"
 
 for document in "$readme" "$checklist" "$update_plan"; do
-  rg -Fq 'v1.33.12+rke2r2' "$document"
-  rg -Fq 'v1.34.6+rke2r1' "$document"
-  rg -Fq 'v1.35.6+rke2r1' "$document"
+  rg -Fq 'v1.33.13+rke2r2' "$document"
+  rg -Fq 'v1.34.12+rke2r1' "$document"
+  rg -Fq 'v1.35.9+rke2r1' "$document"
 done
 rg -Fq 'changing the matrix requires a chart release' "$readme"
 assert_absent 'username/password authentication|cluster\.config\.cloudCredentialSecretName' "$readme"

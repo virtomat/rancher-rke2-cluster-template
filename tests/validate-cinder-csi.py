@@ -38,9 +38,9 @@ def bundle(driver, attacher, provisioner, resizer, liveness, registrar):
         "registrar": f"registry.k8s.io/sig-storage/csi-node-driver-registrar:{registrar}",
     }
 BUNDLES = {
-    "v1.33.12+rke2r2": bundle("v1.33.0", "v4.7.0", "v5.1.0", "v1.12.0", "v2.14.0", "v2.12.0"),
-    "v1.34.6+rke2r1": bundle("v1.34.0", "v4.10.0", "v5.3.0", "v1.14.0", "v2.17.0", "v2.15.0"),
-    "v1.35.6+rke2r1": bundle("v1.35.0", "v4.10.0", "v5.3.0", "v1.14.0", "v2.17.0", "v2.15.0"),
+    "v1.33.13+rke2r2": bundle("v1.33.0", "v4.7.0", "v5.1.0", "v1.12.0", "v2.14.0", "v2.12.0"),
+    "v1.34.12+rke2r1": bundle("v1.34.0", "v4.10.0", "v5.3.0", "v1.14.0", "v2.17.0", "v2.15.0"),
+    "v1.35.9+rke2r1": bundle("v1.35.0", "v4.10.0", "v5.3.0", "v1.14.0", "v2.17.0", "v2.15.0"),
 }
 CONTROLLER_PERMISSIONS = {
     ("", "persistentvolumes"): {"get", "list", "watch", "create", "delete", "patch"},
@@ -303,7 +303,7 @@ def check_rbac(report, docs):
             report.check(not any("snapshot" in r for r in resources)
                          and not any("snapshot" in g for g in rule.get("apiGroups") or []),
                          f"{role_name} snapshot access")
-def check_ccm_nginx(report, docs, cluster, images, masters):
+def check_ccm_addons(report, docs, cluster, images, masters):
     ccm = expect(report, docs, "Deployment", "openstack-cloud-controller-manager")
     report.eq(ctr(ccm, "openstack-cloud-controller-manager").get("image"),
               images["ccm"], "CCM image")
@@ -314,14 +314,18 @@ def check_ccm_nginx(report, docs, cluster, images, masters):
     indices = [docs.index(m) for m in markers if m in docs]
     report.check(ccm in docs and indices and docs.index(ccm) < min(indices),
                  "Cinder CSI must follow the CCM manifest")
-    ingress = ((cluster.get("spec") or {}).get("rkeConfig", {}).get("chartValues") or {}).get(
-        "rke2-ingress-nginx") or {}
-    service = (ingress.get("controller") or {}).get("service") or {}
-    if masters == 1:
-        report.eq(service.get("enabled"), False, "single-master NGINX service")
-    else:
-        report.eq(service.get("enabled"), True, "HA NGINX service")
-        report.eq(service.get("type"), "LoadBalancer", "HA NGINX type")
+    rke_config = (cluster.get("spec") or {}).get("rkeConfig") or {}
+    chart_values = rke_config.get("chartValues") or {}
+    report.check("rke2-ingress-nginx" not in chart_values,
+                 "legacy rke2-ingress-nginx chartValues must be absent")
+    traefik = chart_values.get("rke2-traefik") or {}
+    report.check(bool(traefik), "packaged rke2-traefik chartValues missing")
+    report.eq(((traefik.get("providers") or {}).get("kubernetesGateway") or {}).get(
+        "enabled"), True, "Traefik Gateway provider")
+    report.eq((rke_config.get("machineGlobalConfig") or {}).get("ingress-controller"),
+              ["traefik"], "RKE2 ingress-controller selection")
+    report.check(not any(d.get("kind") in {"Gateway", "GatewayClass"} for d in docs),
+                 "additionalManifest must not duplicate Gateway/GatewayClass objects")
 def check_cluster(report, documents, version, masters):
     images = BUNDLES[version]
     clusters = [d for d in documents if d.get("kind") == "Cluster"]
@@ -348,7 +352,7 @@ def check_cluster(report, documents, version, masters):
     check_controller(report, embedded, images)
     check_node(report, embedded, images)
     check_rbac(report, embedded)
-    check_ccm_nginx(report, embedded, cluster, images, masters)
+    check_ccm_addons(report, embedded, cluster, images, masters)
 LOOKUP_SUBSTITUTIONS = (
     ("templates/_helpers.tpl",
      '{{- $secret := lookup "v1" "Secret" $namespace $appCredSecretName }}',
@@ -445,10 +449,13 @@ def check_schema(report):
         return
     report.eq(sorted(versions), sorted(BUNDLES), "schema supported versions")
 def check_unsupported(report, chart, values):
-    completed = run_helm(chart, values, "v1.32.1+rke2r1", 1)
-    report.check(completed.returncode != 0, "unsupported version must fail rendering")
-    report.check(all(version in completed.stderr for version in BUNDLES),
-                 "unsupported-version error lists supported versions")
+    for version in ("v1.32.1+rke2r1", "v1.33.12+rke2r2", "v1.34.6+rke2r1",
+                    "v1.35.6+rke2r1"):
+        completed = run_helm(chart, values, version, 1)
+        report.check(completed.returncode != 0,
+                     f"unsupported version {version} must fail rendering")
+        report.check(all(supported in completed.stderr for supported in BUNDLES),
+                     f"unsupported-version error for {version} lists supported versions")
 def check_helper(report, workdir):
     mini = workdir / "helper-chart"
     (mini / "templates").mkdir(parents=True)

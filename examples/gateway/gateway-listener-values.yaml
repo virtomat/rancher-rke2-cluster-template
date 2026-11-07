@@ -1,0 +1,24 @@
+# Packaged rke2-traefik values fragment for one HTTPS listener.
+#
+# This is NOT a standalone Gateway object and must not be `kubectl apply`-ed.
+# Merge the `gateway.listeners` entry into:
+#   - a new cluster's Helm values at cluster.config.chartValues.rke2-traefik, or
+#   - an existing 1.1.0 Rancher provisioning Cluster at
+#     spec.rkeConfig.chartValues.rke2-traefik.
+# Preserve the chart's existing `web` listener and all other baseline values.
+# The internal listener port must be 8443; external 443 is already published.
+gateway:
+  listeners:
+    shop-https:
+      port: 8443
+      protocol: HTTPS
+      hostname: shop.example.com
+      mode: Terminate
+      certificateRefs:
+        - name: shop-example-com-tls
+          namespace: shop
+      namespacePolicy:
+        from: Selector
+        selector:
+          matchLabels:
+            kubernetes.io/metadata.name: shop

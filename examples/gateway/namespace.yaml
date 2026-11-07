@@ -1,0 +1,10 @@
+# Administrator-controlled application namespace opt-in.
+# This label lets the shared HTTP `web` listener accept routes from this
+# namespace (including cert-manager's temporary HTTP-01 challenge route).
+# The label is namespace-level opt-in, not hostname authorization.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop
+  labels:
+    gateway-access: public

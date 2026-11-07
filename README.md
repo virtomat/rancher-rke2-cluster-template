@@ -2,7 +2,7 @@
 
 |    Type     | Chart Version |
 | :---------: | :-----------: |
-| application |   `1.0.5`     |
+| application |   `1.1.0`     |
 
 This repository contains a Rancher cluster template Helm chart for provisioning RKE2 clusters on OpenStack.
 
@@ -25,6 +25,8 @@ The main files to keep in sync during this work are:
 - [`values.yaml`](values.yaml): chart defaults
 - [`questions.yaml`](questions.yaml): Rancher UI questions and defaults
 - [`templates/`](templates): rendered resources and chart logic
+- [`docs/gateway-api.md`](docs/gateway-api.md): Gateway API and per-domain TLS onboarding
+- [`examples/gateway/`](examples/gateway/): non-secret Gateway/TLS examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md): environment-specific troubleshooting notes under review
 
 ## Supported Providers
@@ -41,7 +43,8 @@ The main files to keep in sync during this work are:
 - MultiPool CLI overrides can set `nodePoolCounts.master` and `nodePoolCounts.worker`; `nodepools[].quantity` remains a fallback for older UI paths.
 - OpenStack node configs default `configDrive` to `true` so cloud-init can bootstrap reliably even when metadata-service discovery is inconsistent.
 - The zero-local-disk workload flavors boot from 40 GiB Cinder volumes by default. `volumeType` is intentionally empty so Cinder selects the target environment's default type.
-- The chart supports exactly three validated RKE2 releases: `v1.33.12+rke2r2`, `v1.34.6+rke2r1`, and `v1.35.6+rke2r1` (default). The bundled OpenStack CCM image is derived automatically from the selected version (`v1.33.0`, `v1.34.0`, `v1.35.0` respectively) and is not user configurable; changing the matrix requires a chart release and validation.
+- The chart supports exactly three RKE2 releases: `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default). The bundled OpenStack CCM image is derived automatically from the selected version (`v1.33.0`, `v1.34.0`, `v1.35.0` respectively) and is not user configurable; changing the matrix requires a chart release and validation.
+- The latest live Rancher observed for this workspace is 2.14.3. Per the SUSE Rancher support matrix, that Rancher line supports Kubernetes 1.33-1.35; do not offer or upgrade to 1.36/1.37 on that basis. The Gateway baseline has independent offline verification plus live acceptance on the default `v1.35.9+rke2r1` for single-node and HA; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only. See [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md).
 - Dev and Prod use the same public workload flavor catalog. The chart defaults to `c1.medium` for control-plane nodes and `s1.medium` for workers; both flavor families have `small`, `medium`, and `large` UI options.
 - Expected input secrets in that user namespace:
   - application credential secret `os-app-cred-<suffix>` with `applicationCredentialId` and `applicationCredentialSecret`
@@ -54,13 +57,13 @@ The main files to keep in sync during this work are:
   - OpenStack CCM manifest embedded in `additionalManifest`
   - OpenStack Cinder CSI manifest (driver, sidecars, RBAC, and two StorageClasses) appended to `additionalManifest` after the CCM manifest
 - Floating-IP and ingress topology is selected by the effective master count (`nodePoolCounts.master`, falling back to the `master` nodepool `quantity`):
-  - single master (count `1`): the master `OpenstackConfig` renders `floatingipPool` (default `ext_net_gts`) and appends `publicIngressSecGroups` to the baseline `secGroups`; the packaged `rke2-ingress-nginx` controller is forced onto that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is disabled
-  - HA (count `>= 3`): no node floating IPs are assigned; the packaged `rke2-ingress-nginx` controller service is forced to `enabled: true` with `type: LoadBalancer`, and external addresses are allocated by OpenStack CCM/Octavia from `os-ccm-net-config.floatingNetworkId`. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet, so the generated `cloud.conf` sets `manage-security-groups = false` and the CCM must not create per-LB `lb-sg-*` security groups; the public ingress group is never attached in HA, and public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts
+  - single master (count `1`): the master `OpenstackConfig` renders `floatingipPool` (default `ext_net_gts`) and appends `publicIngressSecGroups` to the baseline `secGroups`; the packaged `rke2-traefik` Gateway controller is forced onto that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is a `ClusterIP` reached through the master floating IP. The packaged chart owns GatewayClass `traefik` and Gateway `kube-system/shared-gateway`; its only default listener is `web` on internal port `8000`, published externally as `80`, with namespace opt-in `gateway-access: public`. Port `443` and the `websecure` entrypoint are also published, but no HTTPS listener is configured by default
+  - HA (count `>= 3`): no node floating IPs are assigned; the packaged `rke2-traefik` controller keeps the same DaemonSet but clears host ports and forces one `LoadBalancer` Service, and external addresses are allocated by OpenStack CCM/Octavia from `os-ccm-net-config.floatingNetworkId`. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet, so the generated `cloud.conf` sets `manage-security-groups = false` and the CCM must not create per-LB `lb-sg-*` security groups; the public ingress group is never attached in HA, and public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts
   - a master count of exactly `2` is rejected at render time with a clear error
 - Worker `OpenstackConfig` objects never render `floatingipPool`; worker nodes stay on the private tenant network (`netName`, default `local-net`).
 - `os-ccm-net-config` is an input secret, while `<cluster-name>-cloud-config-*` is generated output.
 - The chart requires a local `rke2-openstack-environment` ConfigMap in the derived `u-<suffix>` namespace with non-empty `authUrl` and `region` keys. Onboarding projects the canonical `fleet-default/rke2-openstack-environment` ConfigMap into the user namespace, so the chart never reads the `fleet-default` copy. All normal user Helm lookups are therefore local, and no user `fleet-default` access is needed. These values are not chart inputs and are used for both node provisioning and CCM configuration.
-- Current chart behavior is RKE2/OpenStack oriented, and the first validation path is a single-node RKE2 install in Dev.
+- Current chart behavior is RKE2/OpenStack oriented; validation paths cover single-master and HA. Offline verification covers the full patch matrix; live acceptance covers the Gateway baseline on default `v1.35.9+rke2r1` only.
 - Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after onboarding has projected the local ConfigMap into the user namespace.
 - The offline Cinder CSI contract test is different from a plain `helm template`: `python3 tests/validate-cinder-csi.py` copies the chart to a temporary directory, replaces only the four `lookup` call sites with synthetic fixtures, and renders all other template logic unchanged. It requires `helm` and Python 3 with PyYAML, never contacts a cluster, and does not relax the production templates' fail-closed lookups.
 
@@ -75,8 +78,8 @@ clusters; do not upgrade an existing release to validate it, and existing
 clusters are not changed by this task.
 
 - Images: the driver and sidecars are derived from the same three-version RKE2
-  matrix as the CCM (RKE2 `v1.33.12+rke2r2` -> driver `v1.33.0`,
-  `v1.34.6+rke2r1` -> driver `v1.34.0`, `v1.35.6+rke2r1` -> driver
+  matrix as the CCM (RKE2 `v1.33.13+rke2r2` -> driver `v1.33.0`,
+  `v1.34.12+rke2r1` -> driver `v1.34.0`, `v1.35.9+rke2r1` -> driver
   `v1.35.0`) with pinned sidecar tags. There is no user image input.
 - Storage classes: `cinder-delete` uses `Delete` and is the sole default;
   `cinder-retain` uses `Retain` and is not a default. Both set
@@ -112,9 +115,14 @@ clusters are not changed by this task.
 - Expansion: `allowVolumeExpansion: true` enables the CSI capability, but
   online resize still depends on backend Cinder support.
 
-Live acceptance was run on 2026-11-06 against a newly provisioned Dev cluster
-(chart `1.0.5`, first Helm revision, default RKE2 `v1.35.6+rke2r1`, one
-control-plane node and two workers). Observed: controller `1/1`, node DaemonSet
+Historical live acceptance was run on 2026-11-06 against a newly provisioned Dev
+cluster (chart `1.0.5`, first Helm revision, default RKE2 `v1.35.6+rke2r1`, one
+control-plane node and two workers). That run remains history; the current
+`1.1.0` baseline advances the patch matrix to `v1.33.13+rke2r2`,
+`v1.34.12+rke2r1`, and `v1.35.9+rke2r1` and changes ingress to the Gateway
+baseline. The Gateway baseline has since passed live acceptance on the default
+`v1.35.9+rke2r1` only; the two older pins remain offline-render-only for both
+Gateway and CSI. Observed: controller `1/1`, node DaemonSet
 `3/3`, `CSINode` registration on all three nodes, a claim omitting
 `storageClassName` defaulted to `cinder-delete` at admission and stayed
 `Pending` under WaitForFirstConsumer until a consumer was scheduled, mount,
@@ -132,6 +140,59 @@ retained PV/volume were subsequently cleaned up under explicit authorization on
 2026-11-06, leaving no test resources; shared onboarding resources were
 preserved. This add-on is not yet a full production-ready claim.
 
+## Gateway API Ingress And TLS
+
+Chart `1.1.0` replaces the legacy NGINX ingress path with the packaged RKE2
+Traefik Gateway baseline. It is a new-cluster baseline only: do not upgrade an
+existing cluster or migrate an existing ingress as part of this change.
+
+- `ingress-controller: [traefik]` is forced in the rendered `Cluster`. The
+  packaged `rke2-traefik` chart owns GatewayClass `traefik`, Gateway
+  `kube-system/shared-gateway`, the Traefik workload, and its Service; no
+  Gateway or GatewayClass is embedded in `additionalManifest`.
+- The default `web` listener is HTTP on the packaged entrypoint port `8000`,
+  published externally as `80`. Its namespace opt-in is the label selector
+  `gateway-access: public`. External `443` and the `websecure` entrypoint are
+  published/allocated, but no HTTPS listener, Certificate, Secret, issuer, or
+  `certificateRefs` is configured by default. The websecure entrypoint's global
+  TLS default is disabled; TLS is supplied per Gateway HTTPS listener.
+- Single master exposes the controller through the master floating IP and host
+  ports `80`/`443` (ClusterIP Service). HA clears the host ports and uses one
+  LoadBalancer Service served by OpenStack CCM/Octavia. In host-port mode the
+  Gateway status has no addresses; administrators use the same master floating
+  IP as before and maintain DNS manually. There is no custom service discovery
+  or ExternalDNS controller. HA copies the LoadBalancer status.
+- One Traefik controller and one Service serve all Gateways; additional
+  Gateways or controllers are manual administrator work and are out of scope.
+- The template does **not** install cert-manager, a ClusterIssuer, a
+  Certificate, a TLS Secret, or DNS credentials. TLS onboarding is an
+  administrator/application integration documented in
+  [`docs/gateway-api.md`](docs/gateway-api.md), with non-secret examples in
+  [`examples/gateway/`](examples/gateway/).
+- App teams own their `HTTPRoute`, per-domain `Certificate`, cert-manager
+  TLS Secret, and the narrow cross-namespace `ReferenceGrant`; administrators
+  own Gateway listeners, namespace opt-in, cert-manager installation, and
+  issuers. The workflow uses individual domains rather than a wildcard default.
+- cert-manager is an integration prerequisite, not a chart add-on. For a new
+  install, use a verified pinned patch from the current 1.21 line (1.21
+  supports Kubernetes 1.33-1.36; 1.20 supports 1.32-1.35). The exact pin is an
+  administrator choice and is not encoded in this chart or its examples.
+- Gateway CRDs must exist before cert-manager starts. The packaged Traefik CRD
+  bundle supplies them for new clusters; do not work around an install-order
+  mistake by restarting cert-manager.
+- TLS listener merge, ownership, HTTP-01 reachability, staging-to-production
+  replacement, and context guards are documented in
+  [`docs/gateway-api.md`](docs/gateway-api.md). Independent offline verification
+  completed on 2026-11-06 (399 Gateway checks, 1379 CSI checks, static shell
+  PASS). Fresh live acceptance of the Gateway baseline then completed on the
+  default `v1.35.9+rke2r1` in single-node and HA; the `v1.33`/`v1.34` pins
+  remain offline-only. See
+  [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md).
+- RKE2 installs the packaged Traefik main and CRD HelmCharts asynchronously and
+  declares no explicit dependency. The initial Traefik Helm job may retry until
+  the Gateway API CRDs are established. Local renders do not prove this live
+  startup path; persistent failure requires HelmChart/job/event inspection, not
+  automatic deletes, restarts, uninstalls, or custom repair.
 
 ## Prerequisites
 
@@ -158,8 +219,8 @@ This chart expects a pre-created OpenStack security group for Kubernetes nodes.
 
 For the current validation paths, the important distinction is:
 
-- single master: the master node receives a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), receives the public ingress group in addition to the baseline group, and runs the packaged `rke2-ingress-nginx` controller on the control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is disabled
-- HA (3+ masters): no node floating IPs are assigned; the packaged `rke2-ingress-nginx` controller runs as a `LoadBalancer` service, and OpenStack CCM/Octavia allocate the external address through the `os-ccm-net-config` network Secret (`floatingNetworkId`). HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet; the generated `cloud.conf` sets `manage-security-groups = false`, the CCM must not create per-LB `lb-sg-*` security groups, and the public ingress group is never attached in HA. Public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts.
+- single master: the master node receives a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), receives the public ingress group in addition to the baseline group, and runs the packaged `rke2-traefik` Gateway controller on the control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while its Service is a `ClusterIP` reached through the master floating IP
+- HA (3+ masters): no node floating IPs are assigned; the packaged `rke2-traefik` controller runs with host ports cleared and one `LoadBalancer` Service, and OpenStack CCM/Octavia allocate the external address through the `os-ccm-net-config` network Secret (`floatingNetworkId`). HA relies on the onboarding-managed static `k8s-rke2` NodePort rule from the tenant subnet; the generated `cloud.conf` sets `manage-security-groups = false`, the CCM must not create per-LB `lb-sg-*` security groups, and the public ingress group is never attached in HA. Public `80`/`443` traffic reaches the Octavia floating IP, then the node NodePorts.
 
 Minimum baseline rule groups for the dedicated security group for the single-master bootstrap path are:
 
@@ -172,9 +233,25 @@ When using `all ingress from the same security group`, separate intra-cluster ru
 
 For the HA ingress/`Service type=LoadBalancer` path, the onboarding-managed static `k8s-rke2` security group is the only group attached to the nodes and provides the NodePort rule (`30000-32767`) from the tenant subnet used by the Kubernetes nodes and the Octavia backend path. HA relies on that onboarding-managed rule; the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. The public ingress group (`k8s-rke2-public-ingress`) is never attached in HA. Public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts via the amphora. Do not add public `6443` and do not alter the baseline or ingress topology behavior described here.
 
-The chart's `rke2-ingress-nginx` controller behavior depends on topology: single master schedules it on the control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while disabling its Service; HA (3+ masters) enables it as a `LoadBalancer` service without the single-master host-port, selector, or toleration overrides. Octavia is therefore relevant for HA ingress validation and not for the single-master bootstrap path.
+The chart's packaged `rke2-traefik` Gateway controller behavior depends on topology: single master schedules it on the control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, while using a `ClusterIP` Service reached through the master floating IP; HA (3+ masters) clears host ports and uses one `LoadBalancer` Service without the single-master host-port, selector, or toleration overrides. Octavia is therefore relevant for HA ingress validation and not for the single-master bootstrap path. The security-group contract is unchanged by the switch from the legacy NGINX controller to Traefik.
 
-When deleting an HA cluster, retain the Octavia load balancer and floating-IP IDs before removing the Rancher cluster. CCM can exit before it reconciles the `LoadBalancer` Service deletion, leaving those cloud resources behind. Delete any retained test-owned health monitors and members, cascade-delete the load balancer, then delete its floating IP; do not delete unrelated tenant resources.
+When deleting an HA test cluster, remove the Traefik `Service` before the
+cluster while CCM is still live, otherwise CCM can exit before it reconciles
+`LoadBalancer` deletion and leaves the Octavia load balancer and floating IP
+behind. The verified teardown for a test cluster is to merge
+`rke2-traefik.service.enabled: false` into that cluster's owning Rancher
+provisioning `Cluster` chartValues and remove only the test HTTPS listener,
+keeping `web` and all other keys. The packaged Helm release then deletes the
+Service, and CCM requests load-balancer deletion. Octavia removes the load
+balancer, VIP, service compute, and amphora as part of that LB cleanup; CCM
+also removes the floating IP. After the test namespaces and issuers are
+removed, the cluster-template release can be uninstalled, and Rancher CAPI
+then removes the Kubernetes nodes, boot volumes, and ports. Rancher CAPI does
+not own the Octavia amphora or VIP. This is test teardown, not a normal
+operating baseline; do not delete the Service directly on its own, because
+Helm can recreate it. Retaining the load-balancer and floating-IP IDs for a
+manual fallback remains available if the guarded path is unavailable, but it
+was not needed here.
 
 For temporary Dev debugging only, it can also be useful to allow:
 
@@ -277,6 +354,56 @@ helm search repo <repo-alias> --versions
 helm install <cluster-name> <repo-alias>/rke2-cluster-templates --version <x.x.x> -n fleet-default -f values.yaml
 ```
 
+### Offline Contract Checks
+
+The Python contract tests require `helm` and Python 3 with PyYAML. They invent
+synthetic `lookup` fixtures and never contact a cluster:
+
+```sh
+python3 tests/validate-cinder-csi.py
+python3 tests/validate-gateway.py
+```
+
+The Gateway contract test can also render the actual packaged `rke2-traefik`
+charts when local copies are available. The packages are an optional offline
+cache and are not vendored in this repository; set `RKE2_TRAEFIK_CHART_DIR` to
+the cache directory (default `/tmp/opencode/gateway-evaluation`). The official
+RKE2 chart URLs used by this matrix are:
+
+```sh
+mkdir -p /tmp/opencode/gateway-evaluation
+curl -fL -o /tmp/opencode/gateway-evaluation/rke2-traefik-40.1.009.tgz \
+  https://github.com/rancher/rke2-charts/raw/main/assets/rke2-traefik/rke2-traefik-40.1.009.tgz
+curl -fL -o /tmp/opencode/gateway-evaluation/rke2-traefik-40.1.013.tgz \
+  https://github.com/rancher/rke2-charts/raw/main/assets/rke2-traefik-1.34-1.36/rke2-traefik-40.1.013.tgz
+```
+
+Then make missing packages a hard failure with:
+
+```sh
+RKE2_TRAEFIK_CHART_DIR=/tmp/opencode/gateway-evaluation \
+  python3 tests/validate-gateway.py --require-packaged-charts
+```
+
+The static environment contract check additionally requires Ruby (to parse the
+questions YAML) and `rg` (ripgrep):
+
+```sh
+bash tests/validate-openstack-environment.sh
+```
+
+Independent offline verification completed on 2026-11-06: the Gateway contract
+test passed 399 checks, the Cinder CSI contract test passed 1379 checks, and the
+static environment contract check passed. These are local render/static results
+only; they do not prove live routing, HTTPS/ACME issuance, or the live packaged
+Traefik main/CRD HelmChart startup path. Fresh live acceptance on 2026-11-06
+covered the default `v1.35.9+rke2r1` single-node and HA paths, including CRD
+bootstrap, HTTP, TLS issuance, and cleanup; see
+[`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md).
+
+No SHA-256 value is pinned in this documentation; verify the downloaded chart
+digests against the source release or your approved artifact process.
+
 ## Helm Chart Deployment Status
 
 ```sh
@@ -316,8 +443,11 @@ Please check [Release v2.9.0 Changes](https://github.com/rancher/rancher/release
 When configuring `audit-log-path` in `cluster.config.machineGlobalConfig.kube_apiserver_arg`, the value must be a file path. If a directory is specified instead, the API server will fail to start. When a file path is provided, the base directory of the file will be automatically created and mounted into the kube-apiserver pod.
 
 ## References
-- [`rancher-ui-test-checklist.md`](rancher-ui-test-checklist.md): operator checklist for creating the validated HA cluster from the Rancher UI
+- [`rancher-ui-test-checklist.md`](rancher-ui-test-checklist.md): operator checklist for creating the HA cluster from the Rancher UI
 - [`update-plan.md`](update-plan.md)
+- [`docs/gateway-api.md`](docs/gateway-api.md): administrator/application Gateway API and per-domain TLS onboarding
+- [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md): 2026-11-06 live acceptance results and limits
+- [`examples/gateway/`](examples/gateway/): non-secret listener, issuer, Certificate, ReferenceGrant, and HTTPRoute examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md)
 - [Hardened Rancher Cluster Templates by Rancher Government Solutions](https://artifacthub.io/packages/helm/rancher-cluster-templates/rancher-cluster-templates)
 - [rancher cluster-template-examples](https://github.com/rancher/cluster-template-examples/tree/main)

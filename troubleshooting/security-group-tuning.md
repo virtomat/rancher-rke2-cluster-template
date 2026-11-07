@@ -1,12 +1,12 @@
 # Load Balancer Operating Status ERROR - Security Group Issue
 
-> Current preferred model: pre-create a baseline Kubernetes node security group such as `k8s-rke2` and attach it through `cluster.config.openstack.secGroups`. The chart appends `cluster.config.openstack.publicIngressSecGroups` (default `k8s-rke2-public-ingress`) only to a single master; HA masters and workers retain the baseline group. In HA the public ingress group is never attached, and the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from the tenant subnet; public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts. Do not add public `6443` and do not alter the baseline or ingress topology behavior. Treat changes to the project `default` security group as temporary Dev/debug-only workarounds.
+> Current chart baseline (1.1.0) uses the packaged `rke2-traefik` Gateway controller rather than the legacy NGINX controller; the security-group contract below is unchanged. Current preferred model: pre-create a baseline Kubernetes node security group such as `k8s-rke2` and attach it through `cluster.config.openstack.secGroups`. The chart appends `cluster.config.openstack.publicIngressSecGroups` (default `k8s-rke2-public-ingress`) only to a single master; HA masters and workers retain the baseline group. In HA the public ingress group is never attached, and the generated `cloud.conf` sets `manage-security-groups = false`, so the CCM must not create per-LB `lb-sg-*` security groups. HA relies on the onboarding-managed static `k8s-rke2` NodePort rule (`30000-32767`) from the tenant subnet; public `80`/`443` traffic reaches the Octavia floating IP first, then the node NodePorts. Do not add public `6443` and do not alter the baseline or ingress topology behavior. Treat changes to the project `default` security group as temporary Dev/debug-only workarounds.
 >
-> Scope note: this document is about the OpenStack CCM / Octavia / `Service type=LoadBalancer` path used by HA clusters (3+ masters). In HA, no node floating IPs are assigned; external addresses are allocated by Octavia for LoadBalancer services via the CCM network Secret. Single-master clusters instead give the master node a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), schedule the packaged `rke2-ingress-nginx` controller on that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, and disable its Service. The single-master public ingress group needs only TCP `80` and `443` from intended client CIDRs; it does not use the LoadBalancer path covered here.
+> Scope note: this document is about the OpenStack CCM / Octavia / `Service type=LoadBalancer` path used by HA clusters (3+ masters). In HA, no node floating IPs are assigned; external addresses are allocated by Octavia for LoadBalancer services via the CCM network Secret. Single-master clusters instead give the master node a direct floating IP from `cluster.config.openstack.floatingipPool` (default `ext_net_gts`), schedule the packaged `rke2-traefik` Gateway controller on that control-plane master with host ports `80` and `443`, tolerating `node-role.kubernetes.io/control-plane:NoSchedule` and `node-role.kubernetes.io/etcd:NoExecute`, and use a `ClusterIP` Service reached through the floating IP. The single-master public ingress group needs only TCP `80` and `443` from intended client CIDRs; it does not use the LoadBalancer path covered here.
 
 ## Problem Statement
 
-When creating a Kubernetes (RKE2) cluster using this Helm chart, a load balancer is automatically provisioned by OpenStack Octavia for the NGINX ingress controller. However, the load balancer shows:
+When creating a Kubernetes (RKE2) cluster using this Helm chart, a load balancer is automatically provisioned by OpenStack Octavia for the ingress controller in HA. The original investigation below used the then-current NGINX controller; the current chart baseline uses the packaged `rke2-traefik` Gateway controller, and the HA LoadBalancer/security-group behavior is the same. However, the load balancer shows:
 
 ```
 Provisioning Status: ACTIVE
@@ -284,7 +284,7 @@ If testing as admin worked but user deployments failed, it's likely due to:
 
 ### Kubernetes NodePort Services
 
-Kubernetes exposes services using NodePorts (default range: 30000-32767). The NGINX ingress controller uses NodePort services:
+Kubernetes exposes services using NodePorts (default range: 30000-32767). The HA ingress controller (the original NGINX case below, and the current packaged Traefik LoadBalancer Service) uses NodePort services:
 - Port 30690 � HTTP (80)
 - Port 32169 � HTTPS (443)
 

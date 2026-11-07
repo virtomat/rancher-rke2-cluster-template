@@ -1,0 +1,20 @@
+# Allow the Gateway in kube-system to read exactly this application Secret.
+# A ReferenceGrant cannot name the source Gateway object; the grant is scoped
+# by source namespace, and this example narrows the destination to one Secret.
+# The packaged Gateway API bundles serve both v1 and v1beta1; v1beta1 is used
+# here because it is valid for both and is the storage version in the
+# inspected CRDs. Verify the served versions on the target cluster.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-kube-system-gateway
+  namespace: shop
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: kube-system
+  to:
+    - group: ""
+      kind: Secret
+      name: shop-example-com-tls
