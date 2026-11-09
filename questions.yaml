@@ -27,11 +27,22 @@ questions:
       - SinglePool
       - MultiPool
     group: 'General'
-  - variable: cluster.name
-    description: 'Specify the name of the cluster'
+  - variable: cluster.userName
+    description: 'Cluster name without the environment prefix. Use a lower-case DNS label (letters, digits, and hyphens); the rendered cluster name is <environment>-<name>.'
     label: 'Cluster Name'
+    default: test
     required: true
     type: string
+    group: 'General'
+  - variable: cluster.environment
+    description: 'Environment prefix for the cluster name'
+    label: 'Environment'
+    default: stg
+    required: true
+    type: enum
+    options:
+      stg: Staging
+      prod: Production
     group: 'General'
   - variable: cluster.labels
     label: 'labels'

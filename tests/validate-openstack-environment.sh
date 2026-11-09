@@ -308,7 +308,8 @@ assert_absent 'variable: monitoring\.(version|values)' "$questions"
 rg -Fq 'namespace: {{ $namespace }}' "$managed_charts"
 test "$(rg -Fc 'namespace: {{ $namespace }}' "$managed_charts")" -eq 2
 rg -Fq '{{ toYaml .Values.addons.monitoring.values | nindent 4 }}' "$managed_charts"
-rg -Fq '    - clusterName: {{ .Values.cluster.name }}' "$managed_charts"
+rg -Fq '$clusterName := include "rancher-cluster-templates.clusterName" .' "$managed_charts"
+rg -Fq '    - clusterName: {{ $clusterName }}' "$managed_charts"
 rg -Fq 'include "rancher-cluster-templates.derivedNamespace" $root' "$cluster_role_binding"
 assert_absent 'include "rancher-cluster-templates\.derivedNamespace" \.' "$cluster_role_binding"
 

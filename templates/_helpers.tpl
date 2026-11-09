@@ -61,6 +61,60 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
+{{/*
+Resolve the effective Rancher provisioning cluster name.
+
+A non-empty `cluster.userName` is the UI/CLI name and renders as
+`<cluster.environment>-<cluster.userName>` with the supported environments
+`stg` and `prod` (default `stg`). The user name is a lower-case DNS label and
+the full derived name must not exceed 63 characters; nothing is stripped or
+truncated. When `cluster.userName` is empty, the legacy `cluster.name` value is
+returned unchanged without an environment prefix so existing direct-Helm
+releases keep their names.
+*/}}
+{{- define "rancher-cluster-templates.clusterName" -}}
+{{- $userName := "" -}}
+{{- if hasKey .Values.cluster "userName" -}}
+{{- $userNameValue := .Values.cluster.userName -}}
+{{- if not (kindIs "invalid" $userNameValue) -}}
+{{- if not (kindIs "string" $userNameValue) -}}
+{{- fail "cluster.userName must be a string lower-case DNS label" -}}
+{{- end -}}
+{{- $userName = $userNameValue -}}
+{{- end -}}
+{{- end -}}
+{{- if eq $userName "" -}}
+{{- $legacyName := default "" .Values.cluster.name -}}
+{{- if eq $legacyName "" -}}
+{{- fail "cluster.userName is required when cluster.name is empty" -}}
+{{- end -}}
+{{- $legacyName -}}
+{{- else -}}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" $userName) -}}
+{{- fail (printf "cluster.userName %q must be a lower-case DNS label: letters a-z, digits 0-9, no dots, no uppercase, no whitespace, and no leading or trailing hyphen" $userName) -}}
+{{- end -}}
+{{- $environment := "stg" -}}
+{{- if hasKey .Values.cluster "environment" -}}
+{{- $environmentValue := .Values.cluster.environment -}}
+{{- if not (kindIs "string" $environmentValue) -}}
+{{- fail "cluster.environment must be a string; supported values are stg, prod" -}}
+{{- end -}}
+{{- if eq $environmentValue "" -}}
+{{- fail "cluster.environment must not be empty; supported values are stg, prod" -}}
+{{- end -}}
+{{- $environment = $environmentValue -}}
+{{- end -}}
+{{- if not (hasKey (dict "stg" "Staging" "prod" "Production") $environment) -}}
+{{- fail (printf "Unsupported cluster.environment %q; supported values are stg, prod" $environment) -}}
+{{- end -}}
+{{- $derivedName := printf "%s-%s" $environment $userName -}}
+{{- if gt (len $derivedName) 63 -}}
+{{- fail (printf "Derived cluster name %q is %d characters; maximum is 63 (cluster.environment %q leaves %d characters for cluster.userName)" $derivedName (len $derivedName) $environment (sub 62 (len $environment))) -}}
+{{- end -}}
+{{- $derivedName -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "rancher-cluster-templates.derivedNamespace" -}}
 {{- $appCredSecretName := required "cluster.config.openstack.applicationCredentialSecretName is required" .Values.cluster.config.openstack.applicationCredentialSecretName }}
 {{- if not (regexMatch "^os-app-cred-[a-z0-9]+(-[a-z0-9]+)*$" $appCredSecretName) }}

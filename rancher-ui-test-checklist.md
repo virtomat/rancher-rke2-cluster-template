@@ -116,6 +116,25 @@ Historical tested scope note (2026-11-06): the checks below were observed once o
 - [ ] Retain does not rebind automatically; recovering the data requires manual PV/volume handling, and cleanup removes only the recorded test PV/volume under an authorized run
 - [ ] Snapshots and shared RWX access are not part of this initial add-on and are not expected to work
 
+## Cluster Naming Checks (Unreleased, Pending Live UI)
+
+Scope: new clusters only. The environment-prefixed naming feature is an
+unreleased `dev` worktree change, not part of published `1.1.0` source `9fdcace`;
+the live Rancher UI form and published-catalog path are unverified, so keep every
+box below unmarked until observed on a target UI-created cluster. A `prod`
+category cluster created in Dev is a naming test only, not a production test.
+Full contract and limits: [`docs/cluster-naming.md`](docs/cluster-naming.md).
+
+- [ ] Create-new-cluster form shows **Cluster Name** (`cluster.userName`) with default `test` and required
+- [ ] **Environment** appears immediately below Cluster Name and is visible in both Simple and Advanced mode
+- [ ] Environment options are exactly `Staging` (`stg`, default) and `Production` (`prod`), required
+- [ ] An untouched UI default form produces a new cluster named `stg-test` (not the legacy `test`)
+- [ ] Selecting `Production` produces `prod-test`, and every rendered name-derived resource plus CSI `CLUSTER_NAME` matches the same resolved name
+- [ ] Invalid `cluster.userName` values (uppercase, dots, whitespace, underscores, leading/trailing hyphen) fail rendering with a clear error
+- [ ] A full name over 63 characters fails; `stg` allows at most 59 user characters and `prod` at most 58, with no stripping or truncation
+- [ ] A legacy direct-Helm release using only `cluster.name` keeps its name unchanged and gains no environment prefix
+- [ ] Record the observed cluster name, render, and cleanup of only this test cluster; do not edit `userName`/`environment` on an existing release to rename it
+
 ## Troubleshooting Notes
 
 - **Bootstrap stalls**: check whether a node fell back to `DatasourceNone` in cloud-init. If `configDrive` is not set, metadata-service discovery may be inconsistent and nodes can fail to inject the SSH authorized key.

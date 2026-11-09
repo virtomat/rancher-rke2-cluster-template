@@ -2,6 +2,7 @@
 # yamllint disable rule:braces
 ---
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $ }}
+{{- $clusterName := include "rancher-cluster-templates.clusterName" $ }}
 {{- $userId := regexReplaceAll "^u-" $namespace "" }}
 {{- $suffix := include "rancher-cluster-templates.randomString" . }}
 {{- $masterCount := include "rancher-cluster-templates.masterCount" $ | int }}
@@ -9,7 +10,7 @@
 apiVersion: provisioning.cattle.io/v1
 kind: Cluster
 metadata:
-  name: {{ .Values.cluster.name }}
+  name: {{ $clusterName }}
   namespace: {{$namespace}}
   {{- if .Values.cluster.labels }}
   labels:
@@ -271,7 +272,7 @@ spec:
         {{- end }}
         machineConfigRef:
           kind: OpenstackConfig
-          name: "{{ $.Values.cluster.name }}-{{ $nodepool.name }}"
+          name: "{{ $clusterName }}-{{ $nodepool.name }}"
           # name: {{ $nodepool.name }}
         {{- if $nodepool.drainBeforeDelete }}
         drainBeforeDelete: {{ $nodepool.drainBeforeDelete }}
@@ -453,7 +454,7 @@ spec:
                 - key: cloud.conf
                   path: /etc/rancher/rke2/cloud.conf
                   permissions: "644"
-              name: {{ .Values.cluster.name }}-cloud-config-{{ $suffix }}
+              name: {{ $clusterName }}-cloud-config-{{ $suffix }}
       # machineLabelSelector can be omitted to target all nodes
       # or add specific selectors if you want to target only certain nodes
 

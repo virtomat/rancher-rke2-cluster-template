@@ -2,6 +2,7 @@
 # yamllint disable rule:line-length
 # yamllint disable rule:braces
 {{- $csiImages := include "rancher-cluster-templates.openstackCinderCsiImages" . | fromYaml }}
+{{- $clusterName := include "rancher-cluster-templates.clusterName" . }}
 ---
 # OpenStack Cinder CSI driver for RKE2 clusters.
 #
@@ -414,7 +415,7 @@ spec:
             - name: CLOUD_CONFIG
               value: /etc/config/cloud.conf
             - name: CLUSTER_NAME
-              value: {{ .Values.cluster.name | quote }}
+              value: {{ $clusterName | quote }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

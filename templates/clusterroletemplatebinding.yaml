@@ -3,15 +3,16 @@
 # yamllint disable rule:braces
 
 {{ $root := . }}
+{{- $clusterName := include "rancher-cluster-templates.clusterName" $root }}
 {{- range $index, $member := .Values.clusterMembers }}
 {{- $namespace := include "rancher-cluster-templates.derivedNamespace" $root }}
 ---
 apiVersion: management.cattle.io/v3
-clusterName: c-m-{{ trunc 8 (sha256sum (printf "%s/%s" $namespace $root.Values.cluster.name)) }}
+clusterName: c-m-{{ trunc 8 (sha256sum (printf "%s/%s" $namespace $clusterName)) }}
 kind: ClusterRoleTemplateBinding
 metadata:
   name: ctrb-{{ trunc 8 (sha256sum (printf "%s/%s" $namespace $member.principalName )) }}
-  namespace: c-m-{{ trunc 8 (sha256sum (printf "%s/%s" $namespace $root.Values.cluster.name)) }}
+  namespace: c-m-{{ trunc 8 (sha256sum (printf "%s/%s" $namespace $clusterName)) }}
 roleTemplateName: {{ $member.roleTemplateName }}
 userPrincipalName: {{ $member.principalName }}
 {{- end }}

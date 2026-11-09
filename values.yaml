@@ -52,7 +52,18 @@ x-openstackconfig: &openstackconfig
 
 # cluster values
 cluster:
+  # Legacy direct-Helm fallback. The Rancher UI no longer asks for this value;
+  # it is used unchanged, without an environment prefix, only when
+  # cluster.userName is empty so existing releases keep their names.
   name: test
+  # New UI/CLI name. When set, the rendered cluster name is
+  # <environment>-<userName>. CLI users should set cluster.userName instead of
+  # cluster.name; the Rancher UI default populates this with the value it asks
+  # for. It must be a lower-case DNS label, and the derived name must not exceed
+  # 63 characters (no automatic stripping or truncation).
+  userName: ""
+  # Environment prefix for cluster.userName: stg (default) or prod.
+  environment: stg
   # labels:
   #   key: value
   # annotations:

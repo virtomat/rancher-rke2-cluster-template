@@ -16,6 +16,7 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 - Current validation target: production Rancher `2.14.1` accepted the default `v1.35.9+rke2r1` for single-node and 3CP+2W HA; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only
 - Branch split status: `dev` equals `main` at `9fdcace`; no existing cluster upgrade or migration is part of this baseline
 - Release status: `1.1.0` is a published git-backed Rancher catalog source baseline; no CI artifact, semantic-version tag, or Harbor/OCI release exists for this repository
+- Unreleased feature: environment-prefixed cluster naming (`<environment>-<userName>`) exists only as local `dev` worktree changes above published `9fdcace`; `Chart.yaml` stays `1.1.0`, and the live Rancher UI/published-catalog path is not verified
 
 ## Progress
 
@@ -27,6 +28,7 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 - [ ] Validate generic cleanup in Dev
 - [x] Run default-pin Gateway/TLS live acceptance for single-node and 3CP+2W HA with qualified availability
 - [x] Run default-pin production acceptance on Rancher `2.14.1` for single-node and 3CP+2W HA
+- [ ] Verify the unreleased environment-prefixed naming in the live Rancher UI form and published catalog (label, default, ordering, and new-cluster UI path); checklist boxes stay unchecked until observed
 - [ ] Run live coverage for the remaining `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins
 - [x] Merge shared cleanup baseline into `main`
 - [ ] Start Prod-specific adaptation on `main`
@@ -390,6 +392,34 @@ helm upgrade --install dev-rke2-single . \
 - Gateway CRDs: must exist before cert-manager starts. The packaged Traefik CRD bundle supplies them for new clusters. RKE2 installs the packaged Traefik main and CRD HelmCharts asynchronously with no explicit dependency; the initial Traefik Helm job may retry until the Gateway API CRDs are established. Persistent failure requires HelmChart/job/event inspection, not automatic deletes/restarts/uninstalls/custom repair or a cert-manager restart.
 - Verification: independent offline verification completed on 2026-11-06 (Gateway 399 checks, CSI 1379 checks, static shell PASS). These are local render/static results only; live routing, HTTPS/ACME issuance, fresh-bootstrap CRD convergence, and new-patch CSI acceptance remain live gates. Existing Cinder live acceptance remains historical and used `v1.35.6+rke2r1`.
 
+## Environment-Prefixed Cluster Naming (Unreleased, New Clusters)
+
+- Status: unreleased local `dev` worktree feature. `Chart.yaml` stays `1.1.0`;
+  the published `main`/catalog source `9fdcace` does not include it, and no
+  commit, push, tag, CI artifact, or publication is implied.
+- Contract: a non-empty `cluster.userName` renders
+  `<cluster.environment>-<cluster.userName>`. `cluster.environment` is `stg`
+  (default) or `prod`; `cluster.userName` is a lower-case DNS label. The full
+  name must stay within 63 characters (at most 59 user characters under `stg`,
+  58 under `prod`) and is never stripped or truncated.
+- Fallback: an empty `cluster.userName` returns the legacy `cluster.name`
+  unchanged and ignores the environment. Existing direct-Helm releases keep
+  their names; there is no rename or migration path, and creation-time inputs
+  must not be edited on an existing release.
+- Scope: naming only. The environment category does not select production
+  infrastructure, credential, account, flavor, TLS, or policy. A `prod` category
+  cluster provisioned in Dev is not a production test.
+- Consumers: Cluster metadata, `machineConfigRef`, `OpenstackConfig`, the
+  cloud-config Secret name/annotation/reference, ManagedChart names/targets,
+  ClusterRoleTemplateBinding hash/namespace, and Cinder CSI `CLUSTER_NAME`.
+  Physical node names still add random suffixes.
+- UI gate: Rancher `2.14.3` enum-type map support is evidenced, but the full
+  live form is unverified. Label, default application, question ordering, and
+  the new-cluster UI path stay pending because the published Dev catalog does
+  not contain the uncommitted feature.
+- See [`docs/cluster-naming.md`](docs/cluster-naming.md) for the full contract,
+  CLI examples, and the 2026-11-09 Dev acceptance summary and limits.
+
 ## Planned Phases
 
 1. Documentation baseline
@@ -514,3 +544,36 @@ helm upgrade --install dev-rke2-single . \
 - Preserved the baseline 2 ports, 3 security groups with their 13 exact rule IDs, onboarding 3 Secrets and 1 ConfigMap, network, subnet, keypair, and management health. Octavia load-balancer, floating-IP, and VIP absence was verified through the tenant API; provider-internal amphora state was not admin-audited, and no global service-project or amphora absence is claimed.
 - Scope limits: no `v1.33`/`v1.34` live run, no Rancher UI RBAC or password login, no existing-cluster upgrade/migration, no natural or production renewal, no snapshot/RWX, no custom volume type or AZ variation, and no whole-node, control-plane, network, amphora-failure, or zero-downtime test.
 - Details and limits: [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md).
+
+#### Environment-Prefixed Cluster Naming (Unreleased, Run 2026-11-09)
+
+- Implemented `cluster.userName` plus `cluster.environment` (`stg` default,
+  `prod`) with a single `rancher-cluster-templates.clusterName` helper and
+  switched every name-derived resource to it. Legacy `cluster.name` is retained
+  as an unchanged fallback only when `cluster.userName` is empty. `Chart.yaml`
+  stays `1.1.0`; this is uncommitted `dev` worktree work above published
+  `9fdcace`, with no commit, push, tag, artifact, or catalog publication.
+- Independent offline verification passed: `python3 tests/validate-cluster-naming.py`
+  (273 checks, 9 renders), `python3 tests/validate-cinder-csi.py` (1379 checks),
+  `python3 tests/validate-gateway.py` (399 checks), `bash tests/validate-openstack-environment.sh`,
+  and `git diff --check`.
+- Fresh Dev acceptance ran on 2026-11-09 with two sequential `SinglePool`
+  clusters (one node with all roles, default `v1.35.9+rke2r1`), both using
+  `cluster.userName=category-test`: the omitted environment produced
+  `stg-category-test`, and explicit `prod` produced `prod-category-test`. All
+  resource prefixes, cloud-config annotation/references, and CSI `CLUSTER_NAME`
+  matched; CCM, CSI, and Traefik Gateway were ready and public HTTP returned
+  `404`. Bootstrap reached Ready/controllers-ready in 658 s/818 s (stg) and
+  649 s/865 s (prod); asynchronous boot-time controller restarts self-recovered
+  (maximum observed 5 and 7) with no repair, so no zero-restart claim is made.
+- Independent checks passed 18 (stg), 23 (prod), and 17 (final cleanup). Final
+  state restored the original baseline: zero VMs, volumes, floating IPs, and
+  load balancers; the original 3 security groups/13 rules, onboarding 3 Secrets,
+  and 1 ConfigMap preserved; the other user cluster and 16 historical releases
+  untouched. No test resources remain; all side effects were Dev-only and no
+  production catalog, `main`, DNS, issuer, or PVC lifecycle was changed/tested.
+- Remaining gate: live Rancher UI form verification (Cluster Name default,
+  Environment immediately below with Staging/Production labels, Simple/Advanced
+  visibility) and the published-catalog new-cluster path. The full live form was
+  not tested because the currently published Dev catalog does not include the
+  uncommitted feature, so the checklist boxes stay unchecked.

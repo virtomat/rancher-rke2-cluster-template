@@ -4,6 +4,7 @@
 
 {{- $environment := include "rancher-cluster-templates.openstackEnvironment" $ | fromYaml }}
 {{- $applicationCredential := include "rancher-cluster-templates.applicationCredential" $ | fromYaml }}
+{{- $clusterName := include "rancher-cluster-templates.clusterName" $ }}
 {{- $masterCount := include "rancher-cluster-templates.masterCount" $ | int }}
 {{- range $index, $nodepool := .Values.nodepools }}
 {{- if or (eq $index 0) (eq $.Values.nodePoolTemplate "MultiPool") }}
@@ -12,7 +13,7 @@
 apiVersion: rke-machine-config.cattle.io/v1
 kind: OpenstackConfig
 metadata:
-  name: "{{ $.Values.cluster.name }}-{{ $nodepool.name }}"
+  name: "{{ $clusterName }}-{{ $nodepool.name }}"
   namespace: {{ $namespace }}
 
 activeTimeout: {{ $nodepool.openstackconfig.activeTimeout | default "200" | quote }}

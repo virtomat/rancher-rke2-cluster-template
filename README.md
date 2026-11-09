@@ -17,6 +17,10 @@ acceptance completed in production on Rancher `2.14.1`.
 - Production acceptance: [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md)
 - The `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins remain offline-render-only.
 - Rancher UI RBAC and whole-node failure paths remain open.
+- Unreleased on `dev` only: environment-prefixed cluster naming
+  (`<environment>-<userName>`). It is not part of published `1.1.0` source
+  `9fdcace`, and the live Rancher UI/published-catalog path is still pending;
+  see [`docs/cluster-naming.md`](docs/cluster-naming.md).
 - Long-running work tracking and progress notes are maintained in [`update-plan.md`](update-plan.md).
 
 ## Maintained Files
@@ -29,6 +33,7 @@ The main files to keep in sync during this work are:
 - [`questions.yaml`](questions.yaml): Rancher UI questions and defaults
 - [`templates/`](templates): rendered resources and chart logic
 - [`docs/gateway-api.md`](docs/gateway-api.md): Gateway API and per-domain TLS onboarding
+- [`docs/cluster-naming.md`](docs/cluster-naming.md): unreleased environment-prefixed naming contract and pending UI verification
 - [`examples/gateway/`](examples/gateway/): non-secret Gateway/TLS examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md): environment-specific troubleshooting notes under review
 
@@ -69,6 +74,35 @@ The main files to keep in sync during this work are:
 - Current chart behavior is RKE2/OpenStack oriented; validation paths cover single-master and HA. Offline verification covers the full patch matrix; live acceptance covers the Gateway baseline on default `v1.35.9+rke2r1` only.
 - Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after onboarding has projected the local ConfigMap into the user namespace.
 - The offline Cinder CSI contract test is different from a plain `helm template`: `python3 tests/validate-cinder-csi.py` copies the chart to a temporary directory, replaces only the four `lookup` call sites with synthetic fixtures, and renders all other template logic unchanged. It requires `helm` and Python 3 with PyYAML, never contacts a cluster, and does not relax the production templates' fail-closed lookups.
+
+## Cluster Naming (Unreleased)
+
+The `dev` worktree adds environment-prefixed names for new clusters. This is
+unreleased: `Chart.yaml` stays `1.1.0`, and the published `main` catalog source
+`9fdcace` does not include it. The full contract and current limits are in
+[`docs/cluster-naming.md`](docs/cluster-naming.md).
+
+| Input | Values | Default |
+| :--- | :--- | :--- |
+| `cluster.userName` | Lower-case DNS label (`a-z`, `0-9`, `-`); no dots, uppercase, whitespace, or leading/trailing `-` | UI `test`; `values.yaml` `""` (legacy fallback) |
+| `cluster.environment` | `stg` or `prod` (naming prefix only) | `stg` |
+
+- Under the Rancher UI defaults, a new cluster renders `<environment>-<userName>`,
+  producing `stg-test`. A pure Helm install using the chart's `values.yaml`
+  defaults keeps the legacy name `test` because `cluster.userName` is empty
+  there. The full name must stay within 63 characters: at most 59 characters
+  for `cluster.userName` under `stg` and 58 under `prod`. Nothing is stripped,
+  truncated, or de-duplicated (`stg-foo` under `stg` becomes `stg-stg-foo`).
+- The environment is naming only. It does not select production
+  infrastructure, credentials, account, flavor, TLS, or policy, and a `prod`
+  category cluster created in Dev is not a production test.
+- `cluster.name` remains a legacy direct-Helm fallback used unchanged only when
+  `cluster.userName` is empty. Existing releases are not renamed or migrated;
+  do not edit these inputs on an existing release to relabel it.
+- New CLI flow: see [Helm Install From A Local Checkout](#helm-install-from-a-local-checkout)
+  for a command that sets `cluster.userName`, the management context, and the
+  required credential Secret name. The Helm release name is independent of the
+  rendered cluster name.
 
 ## OpenStack Cinder CSI And Storage Classes
 
@@ -344,6 +378,23 @@ The ID of the created cloud credentials needs to be added in `cluster.config.etc
 
 ### Helm Install From A Local Checkout
 
+New-flow installs set `cluster.userName` and optionally
+`cluster.environment` (see [`docs/cluster-naming.md`](docs/cluster-naming.md)):
+
+```sh
+helm upgrade -i stg-test . -n fleet-default \
+  --kube-context <management-context> \
+  --set-string cluster.config.openstack.applicationCredentialSecretName=os-app-cred-<suffix> \
+  --set cluster.userName=test
+# Production category: add --set cluster.environment=prod
+```
+
+The Helm release name (`stg-test` above) is only an operator convention and is
+independent of the rendered `<environment>-<userName>` cluster name.
+
+Legacy direct-Helm releases may continue to use the old input, which is kept
+unchanged and is not automatically prefixed:
+
 ```sh
 helm upgrade -i <cluster-name> . -n fleet-default -f values.yaml
 ```
@@ -450,6 +501,7 @@ When configuring `audit-log-path` in `cluster.config.machineGlobalConfig.kube_ap
 - [`update-plan.md`](update-plan.md)
 - [`docs/gateway-api.md`](docs/gateway-api.md): administrator/application Gateway API and per-domain TLS onboarding
 - [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md): 2026-11-06 Dev live acceptance results and limits
+- [`docs/cluster-naming.md`](docs/cluster-naming.md): unreleased environment-prefixed naming contract and pending UI verification
 - [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md): 2026-11-08/09 production live acceptance results and limits
 - [`examples/gateway/`](examples/gateway/): non-secret listener, issuer, Certificate, ReferenceGrant, and HTTPRoute examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md)

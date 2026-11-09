@@ -5,6 +5,25 @@
     "cluster": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string",
+          "description": "Legacy direct-Helm fallback used unchanged only when cluster.userName is empty."
+        },
+        "userName": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Lower-case DNS label (no dots, uppercase, or whitespace) used as <environment>-<userName> when non-empty. The derived name must not exceed 63 characters."
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "stg",
+            "prod"
+          ],
+          "default": "stg",
+          "description": "Environment prefix for cluster.userName."
+        },
         "config": {
           "type": "object",
           "properties": {
