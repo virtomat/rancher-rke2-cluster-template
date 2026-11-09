@@ -20,6 +20,12 @@ integration guide, not an add-on that the template installs for you.
   whole-node failure. See
   [`gateway-live-acceptance.md`](gateway-live-acceptance.md). The examples here
   remain documentation artifacts, not a second acceptance run.
+- Default-pin production acceptance then completed on Rancher `2.14.1` on
+  2026-11-08/09 (UTC) for the same default `v1.35.9+rke2r1` single-node and
+  3CP+2W HA paths. See
+  [`production-live-acceptance.md`](production-live-acceptance.md). The
+  `v1.33`/`v1.34` pins, Rancher UI RBAC, the natural renewal scheduler, and
+  whole-node failure remain unverified.
 - The template does **not** install cert-manager, an issuer, a Certificate, a
   TLS Secret, an email address, a DNS credential, or a DNS controller. Those
   are administrator/application responsibilities.
@@ -458,10 +464,12 @@ single-node and HA paths; see
 - **No existing-cluster upgrade/migration:** do not retrofit this guide onto an
   existing NGINX cluster as part of `1.1.0`.
 - **Live acceptance scope:** live acceptance covers the Gateway baseline and
-  per-domain TLS on the default `v1.35.9+rke2r1` only; the `v1.33`/`v1.34` pins,
+  per-domain TLS on the default `v1.35.9+rke2r1` only, in Dev (2026-11-06) and
+  production Rancher `2.14.1` (2026-11-08/09); the `v1.33`/`v1.34` pins,
   Rancher UI RBAC, the natural renewal scheduler, and whole-node/load-balancer
   failure remain unverified. See
-  [`gateway-live-acceptance.md`](gateway-live-acceptance.md).
+  [`gateway-live-acceptance.md`](gateway-live-acceptance.md) and
+  [`production-live-acceptance.md`](production-live-acceptance.md).
 
 ## Example Bundle
 

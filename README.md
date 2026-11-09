@@ -10,10 +10,13 @@ After adding the repository to Rancher, the template will be visible in `Cluster
 
 ## Project Status
 
-This chart is currently under an active cleanup and alignment effort.
+Chart `1.1.0` is published through the git-backed production Rancher catalog
+from `main` (source `9fdcace`, 2026-11-08). Default-pin Gateway/TLS and Cinder CSI
+acceptance completed in production on Rancher `2.14.1`.
 
-- Shared chart cleanup and Dev validation are expected to happen first on `dev`.
-- Prod-specific adjustments are expected to follow later on `main`.
+- Production acceptance: [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md)
+- The `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins remain offline-render-only.
+- Rancher UI RBAC and whole-node failure paths remain open.
 - Long-running work tracking and progress notes are maintained in [`update-plan.md`](update-plan.md).
 
 ## Maintained Files
@@ -446,7 +449,8 @@ When configuring `audit-log-path` in `cluster.config.machineGlobalConfig.kube_ap
 - [`rancher-ui-test-checklist.md`](rancher-ui-test-checklist.md): operator checklist for creating the HA cluster from the Rancher UI
 - [`update-plan.md`](update-plan.md)
 - [`docs/gateway-api.md`](docs/gateway-api.md): administrator/application Gateway API and per-domain TLS onboarding
-- [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md): 2026-11-06 live acceptance results and limits
+- [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md): 2026-11-06 Dev live acceptance results and limits
+- [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md): 2026-11-08/09 production live acceptance results and limits
 - [`examples/gateway/`](examples/gateway/): non-secret listener, issuer, Certificate, ReferenceGrant, and HTTPRoute examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md)
 - [Hardened Rancher Cluster Templates by Rancher Government Solutions](https://artifacthub.io/packages/helm/rancher-cluster-templates/rancher-cluster-templates)

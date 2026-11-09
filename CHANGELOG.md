@@ -1,4 +1,4 @@
-# 1.1.0 (2026-11-06, UNRELEASED)
+# 1.1.0 (2026-11-08, published source baseline)
 
 ## Changes:
 - feat: Advance the supported RKE2 matrix to `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default); Rancher 2.14.3 supports Kubernetes 1.33-1.35 only, so no 1.36/1.37 path is offered.
@@ -7,7 +7,8 @@
 - docs: Add `docs/gateway-api.md` and non-secret `examples/gateway/` for per-domain cert-manager TLS, staging-first issuance, narrow cross-namespace `ReferenceGrant`, HTTP-01 through the shared `web` listener, and listener merge into Rancher `Cluster` chartValues. The template does not install cert-manager or bootstrap issuers, domains, emails, or DNS credentials.
 - docs: Refresh README, Rancher UI checklist, update plan, root internal guide, and security-group tuning references for the Gateway baseline; preserve the historical `v1.35.6+rke2r1` Cinder live-acceptance record and cleanup confirmation.
 - test: Document `python3 tests/validate-gateway.py --require-packaged-charts` with the optional offline `RKE2_TRAEFIK_CHART_DIR` package cache and official RKE2 Traefik chart source URLs; no packages or unverified SHAs are vendored.
-- note: `1.1.0` is an unreleased source baseline. The new patch matrix, Gateway baseline, and TLS onboarding completed independent offline verification; live routing, TLS/ACME issuance, CRD bootstrap convergence, and fresh patch-matrix acceptance remain live gates. No tag or release publication is implied.
+- test: Production live acceptance on Rancher `2.14.1` completed for the default `v1.35.9+rke2r1` single-node and 3CP+2W HA paths, covering Gateway HTTP/TLS issuance and reload, qualified HA availability, Cinder CSI lifecycle, and cleanup; see [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md).
+- note: `1.1.0` is published as a git-backed Rancher catalog source baseline from `main`; this repository creates no CI artifact, semantic-version tag, or Harbor/OCI release. The new patch matrix, Gateway baseline, and TLS onboarding completed independent offline verification and default-pin production acceptance. The `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins remain offline-render-only, so the full patch matrix, Rancher UI RBAC, and whole-node failure paths remain open.
 
 # v2.0.1
 

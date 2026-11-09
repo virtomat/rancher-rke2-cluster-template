@@ -11,11 +11,11 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 
 ## Current Status
 
-- Phase: Traefik Gateway baseline and `1.1.0` documentation/examples implemented; offline verification and default-pin live acceptance completed, while the full patch matrix and Rancher UI path remain open
+- Phase: `1.1.0` Gateway baseline is published from `main` and default-pin production acceptance is complete; the full patch matrix, Rancher UI path, and whole-node failure paths remain open
 - Current baseline: chart `1.1.0` with RKE2 `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default)
-- Current validation target: Dev. Live acceptance covers the Gateway baseline and TLS on default `v1.35.9+rke2r1` for single-node and 3CP+2W HA; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only
-- Branch split status: `dev` branch; no existing cluster upgrade or migration is part of this baseline
-- Release status: `1.1.0` is an unreleased source baseline; no tag, artifact publication, or Git commit/push is implied by the live acceptance
+- Current validation target: production Rancher `2.14.1` accepted the default `v1.35.9+rke2r1` for single-node and 3CP+2W HA; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only
+- Branch split status: `dev` equals `main` at `9fdcace`; no existing cluster upgrade or migration is part of this baseline
+- Release status: `1.1.0` is a published git-backed Rancher catalog source baseline; no CI artifact, semantic-version tag, or Harbor/OCI release exists for this repository
 
 ## Progress
 
@@ -26,8 +26,9 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 - [ ] Fix `values.yaml`, `questions.yaml`, and `templates/` mismatches
 - [ ] Validate generic cleanup in Dev
 - [x] Run default-pin Gateway/TLS live acceptance for single-node and 3CP+2W HA with qualified availability
+- [x] Run default-pin production acceptance on Rancher `2.14.1` for single-node and 3CP+2W HA
 - [ ] Run live coverage for the remaining `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins
-- [ ] Merge shared cleanup baseline into `main`
+- [x] Merge shared cleanup baseline into `main`
 - [ ] Start Prod-specific adaptation on `main`
 
 ## Scope
@@ -494,3 +495,22 @@ helm upgrade --install dev-rke2-single . \
 - CCM/CSI were healthy on both (`CSINode` 1 and 5, both StorageClasses present). No new PVC I/O, expansion, reattach, or reclaim test was run; the earlier `v1.35.6+rke2r1` CSI acceptance remains historical.
 - Both clusters and their DNS records were cleaned up and independently verified: tenant servers/volumes/floating IPs/load balancers are zero, baseline ports and the three security groups/13 rules are unchanged, onboarding resources and the existing `test` cluster are preserved, and both test names return `NXDOMAIN`. HA teardown disabled `rke2-traefik.service.enabled` in the owning test `Cluster` chartValues and removed only the test HTTPS listener so packaged Helm deleted the Service, CCM requested load-balancer deletion, and Octavia removed the load balancer, VIP, service compute, and amphora as part of that LB cleanup; CCM removed the floating IP. Rancher CAPI then removed the Kubernetes nodes, boot volumes, and ports, and does not own the amphora or VIP.
 - Details and limits: [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md).
+
+### 2026-11-09
+
+#### Production Live Acceptance (Run 2026-11-08 Through Cleanup 2026-11-09 UTC)
+
+- Published the `1.1.0` source baseline by fast-forwarding `main` from `af5797e` to `9fdcace` at 2026-11-08T22:03:30Z; `main` equals `dev`. The git-backed production Rancher `ClusterRepo` auto-reindexed `1.1.0` from that commit at 22:10:01Z. This repository has no CI pipeline, tag, or Harbor/OCI artifact release.
+- Provisioned a fresh `SinglePool` node (control-plane, etcd, and worker) and a fresh `MultiPool` 3-control-plane/2-worker cluster on production Rancher `2.14.1`. Only the default RKE2 `v1.35.9+rke2r1` was live-tested; the `v1.33`/`v1.34` pins remain offline-render-only. Provisioning was CLI/Helm based and Rancher UI RBAC/password login was not tested.
+- Nodes used Ubuntu 24.04, 40 GiB boot volumes, AZ `nova`, and the production default Cinder type `__DEFAULT__`. The scoped test-tenant quota was 20 vCPU, 51200 MiB, and 1 floating IP; HA used 20 vCPU and 49152 MiB, with stages run sequentially and cleaned between. Bootstrap reached Ready in about 419 s and 802 s through normal packaged Helm retries, with no manual repair.
+- Single node published Traefik through the node floating IP with host ports `80`/`443` and a `ClusterIP` Service. HA kept nodes private and used one Octavia `LoadBalancer` with external `80`/`443` through worker NodePorts; the Gateway address was the load-balancer floating IP. No existing production Ingress, issuer, ExternalDNS, security-group, or quota configuration was changed.
+- Public HTTP returned `200` and unknown hosts returned `404` on both. Namespace opt-in was enforced: an unlabelled route was rejected with `NotAllowedByListeners` (route acceptance is the assertion; a fallback `200` is allowed). Per-domain TLS used an application-owned Certificate and Secret with a named-Secret ReferenceGrant, and listeners were merged through the owning Rancher provisioning `Cluster` chartValues, not by patching the Helm-owned Gateway.
+- cert-manager `1.21.3` was installed manually only on the new downstream clusters, after the Gateway API CRDs, with Gateway API enabled. Fresh staging and production ACME accounts were created per cluster; public HTTP-01 probes returned `200` with matching key authorization on single and HA for both staging and production. One controlled staging renewal per cluster (revision 1 -> 2) served a new serial and fingerprint without restart, then production issuance rev3 passed normal system trust, exact SAN, and public `tls.crt` equality. Natural renewal, production renewal, and soak testing were not exercised.
+- Both topologies bound two 1 GiB PVCs only after a consumer was scheduled; the unspecified class defaulted to `cinder-delete` and the explicit class was `cinder-retain`. Synthetic 1 MiB hashes survived single-node pod replacement and HA worker A -> B movement (76.2 s total; 49.9 s detach, 25.6 s attach). Online 1 -> 2 GiB expansion took 16.1 s single and 16.2 s HA, with the filesystem growing from 996780 to 2028392 KiB, the same Pod UID, and zero restarts. A 1.2 GiB proof file was written and removed; its SHA-256 was not captured because the exec websocket timed out, while all 1 MiB hashes were verified.
+- `Delete` removed PVC, PV, and Cinder volume; `Retain` left the PV `Released` and the volume unattached across two reads over 35 s, then manual exact-owned PV and volume cleanup followed. No automatic rebind, snapshot, RWX, backend, custom volume type, AZ, or CSI change is claimed. The first single-node probe used `spec.nodeName`, bypassing WaitForFirstConsumer; it was corrected before any data or volume existed, as a test-harness correction rather than a template change.
+- HA availability used 2 requests/second per HTTP/HTTPS protocol, a 3 s timeout, no retry, a 30 s baseline, one UID-guarded application Pod delete, then one Traefik Pod delete, followed by a stable window. Independent recomputation found application HTTP 143/143 and HTTPS 143/143, Traefik 133/133 each, and 552/552 combined with zero failures. Application pod plus two-endpoint readiness recovered 10.59 s after the DELETE response; Traefik pod/DaemonSet/endpoint readiness took 4.87 s, and full load-balancer health was confirmed at 6.8 s (6.88 s from the request). This is qualified pod-replacement behavior, not a zero-downtime guarantee; no node, control-plane, network, or amphora failure was tested, and production amphora topology is unknown because tenant enumeration returned `403`.
+- Independent re-verification passed the current single-node state (40 checks), corrected HA state (133 checks), and final cleanup (35 checks). An independent raw-request re-parse matched the availability totals. Live checks confirm `cinder-delete` is the sole default StorageClass, `cinder-retain` is non-default, and the management ConfigMap remained present and preserved.
+- Cleanup removed all 6 test VMs, 6 boot volumes, 4 CSI test volumes, 2 floating IPs, and 1 load balancer from the target host project; both test DNS names now return `NXDOMAIN`. HA teardown disabled `rke2-traefik.service.enabled`, removed only the test HTTPS listener, let packaged Helm delete the Service, let CCM delete the load balancer and floating IP while CCM was live, then let Rancher CAPI remove nodes and boot volumes; no forced fallback was needed.
+- Preserved the baseline 2 ports, 3 security groups with their 13 exact rule IDs, onboarding 3 Secrets and 1 ConfigMap, network, subnet, keypair, and management health. Octavia load-balancer, floating-IP, and VIP absence was verified through the tenant API; provider-internal amphora state was not admin-audited, and no global service-project or amphora absence is claimed.
+- Scope limits: no `v1.33`/`v1.34` live run, no Rancher UI RBAC or password login, no existing-cluster upgrade/migration, no natural or production renewal, no snapshot/RWX, no custom volume type or AZ variation, and no whole-node, control-plane, network, amphora-failure, or zero-downtime test.
+- Details and limits: [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md).
