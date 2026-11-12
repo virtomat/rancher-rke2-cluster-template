@@ -11,16 +11,17 @@ After adding the repository to Rancher, the template will be visible in `Cluster
 ## Project Status
 
 Chart `1.1.0` is published through the git-backed production Rancher catalog
-from `main` (source `9fdcace`, 2026-11-08). Default-pin Gateway/TLS and Cinder CSI
-acceptance completed in production on Rancher `2.14.1`.
+from `main`; the source was refreshed to `f242633` (2026-11-09) without a new
+chart version, tag, or CI artifact. Default-pin Gateway/TLS and Cinder CSI
+acceptance completed in production on Rancher `2.14.1` from source `9fdcace`.
 
 - Production acceptance: [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md)
 - The `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins remain offline-render-only.
 - Rancher UI RBAC and whole-node failure paths remain open.
-- Unreleased on `dev` only: environment-prefixed cluster naming
-  (`<environment>-<userName>`). It is not part of published `1.1.0` source
-  `9fdcace`, and the live Rancher UI/published-catalog path is still pending;
-  see [`docs/cluster-naming.md`](docs/cluster-naming.md).
+- Environment-prefixed cluster naming (`<environment>-<userName>`) is part of
+  published `main` source `f242633`. A production CLI naming sanity pass
+  completed; the live Rancher UI form remains unchecked; see
+  [`docs/cluster-naming.md`](docs/cluster-naming.md).
 - Long-running work tracking and progress notes are maintained in [`update-plan.md`](update-plan.md).
 
 ## Maintained Files
@@ -33,7 +34,7 @@ The main files to keep in sync during this work are:
 - [`questions.yaml`](questions.yaml): Rancher UI questions and defaults
 - [`templates/`](templates): rendered resources and chart logic
 - [`docs/gateway-api.md`](docs/gateway-api.md): Gateway API and per-domain TLS onboarding
-- [`docs/cluster-naming.md`](docs/cluster-naming.md): unreleased environment-prefixed naming contract and pending UI verification
+- [`docs/cluster-naming.md`](docs/cluster-naming.md): environment-prefixed naming contract, production CLI sanity, and pending UI verification
 - [`examples/gateway/`](examples/gateway/): non-secret Gateway/TLS examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md): environment-specific troubleshooting notes under review
 
@@ -75,24 +76,26 @@ The main files to keep in sync during this work are:
 - Client-side `helm lint` and `helm template` cannot resolve the required ConfigMap lookup and are expected to fail offline. Use a server-side dry run or render against the management cluster after onboarding has projected the local ConfigMap into the user namespace.
 - The offline Cinder CSI contract test is different from a plain `helm template`: `python3 tests/validate-cinder-csi.py` copies the chart to a temporary directory, replaces only the four `lookup` call sites with synthetic fixtures, and renders all other template logic unchanged. It requires `helm` and Python 3 with PyYAML, never contacts a cluster, and does not relax the production templates' fail-closed lookups.
 
-## Cluster Naming (Unreleased)
+## Cluster Naming
 
-The `dev` worktree adds environment-prefixed names for new clusters. This is
-unreleased: `Chart.yaml` stays `1.1.0`, and the published `main` catalog source
-`9fdcace` does not include it. The full contract and current limits are in
-[`docs/cluster-naming.md`](docs/cluster-naming.md).
+Environment-prefixed names for new clusters are part of the published `main`
+source `f242633` (2026-11-09) at chart `1.1.0`. A production CLI naming sanity
+pass completed; the live Rancher UI form is still unchecked. The full contract
+and current limits are in [`docs/cluster-naming.md`](docs/cluster-naming.md).
 
 | Input | Values | Default |
 | :--- | :--- | :--- |
 | `cluster.userName` | Lower-case DNS label (`a-z`, `0-9`, `-`); no dots, uppercase, whitespace, or leading/trailing `-` | UI `test`; `values.yaml` `""` (legacy fallback) |
 | `cluster.environment` | `stg` or `prod` (naming prefix only) | `stg` |
 
-- Under the Rancher UI defaults, a new cluster renders `<environment>-<userName>`,
-  producing `stg-test`. A pure Helm install using the chart's `values.yaml`
-  defaults keeps the legacy name `test` because `cluster.userName` is empty
-  there. The full name must stay within 63 characters: at most 59 characters
-  for `cluster.userName` under `stg` and 58 under `prod`. Nothing is stripped,
-  truncated, or de-duplicated (`stg-foo` under `stg` becomes `stg-stg-foo`).
+- The Rancher UI question is configured with `cluster.userName` default `test`,
+  which would render `stg-test`; this follows the published question metadata,
+  not an observed UI submission. A pure Helm install using the chart's
+  `values.yaml` defaults keeps the legacy name `test` because `cluster.userName`
+  is empty there. The full name must stay within 63 characters: at most 59
+  characters for `cluster.userName` under `stg` and 58 under `prod`. Nothing is
+  stripped, truncated, or de-duplicated (`stg-foo` under `stg` becomes
+  `stg-stg-foo`).
 - The environment is naming only. It does not select production
   infrastructure, credentials, account, flavor, TLS, or policy, and a `prod`
   category cluster created in Dev is not a production test.
@@ -501,7 +504,7 @@ When configuring `audit-log-path` in `cluster.config.machineGlobalConfig.kube_ap
 - [`update-plan.md`](update-plan.md)
 - [`docs/gateway-api.md`](docs/gateway-api.md): administrator/application Gateway API and per-domain TLS onboarding
 - [`docs/gateway-live-acceptance.md`](docs/gateway-live-acceptance.md): 2026-11-06 Dev live acceptance results and limits
-- [`docs/cluster-naming.md`](docs/cluster-naming.md): unreleased environment-prefixed naming contract and pending UI verification
+- [`docs/cluster-naming.md`](docs/cluster-naming.md): environment-prefixed naming contract, production CLI sanity, and pending UI verification
 - [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md): 2026-11-08/09 production live acceptance results and limits
 - [`examples/gateway/`](examples/gateway/): non-secret listener, issuer, Certificate, ReferenceGrant, and HTTPRoute examples
 - [`troubleshooting/security-group-tuning.md`](troubleshooting/security-group-tuning.md)

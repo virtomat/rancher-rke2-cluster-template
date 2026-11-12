@@ -1,9 +1,9 @@
-# Cluster Naming (Unreleased)
+# Cluster Naming
 
-Status: unreleased local `dev` worktree feature. `Chart.yaml` remains `1.1.0`;
-published `main` catalog source `9fdcace` (2026-11-08) does **not** include it.
-No commit, push, tag, CI artifact, or publication is implied, and the live
-Rancher UI/published-catalog path remains pending verification.
+Status: published in the `main`/production catalog source `f242633`
+(2026-11-09) at chart `1.1.0`; this source refresh created no new chart version,
+tag, or CI artifact. A production CLI naming sanity pass completed; the live
+Rancher UI form and the catalog-driven new-cluster UI path remain unchecked.
 
 ## Contract
 
@@ -16,10 +16,11 @@ legacy direct-Helm fallback.
 | `cluster.userName` | Lower-case DNS label: `a-z`, `0-9`, `-` | UI `test`; `values.yaml` `""` (legacy fallback) | No dots, uppercase, whitespace, or leading/trailing `-`. Required when `cluster.name` is empty. |
 | `cluster.environment` | `stg` or `prod` | `stg` | Naming prefix only. |
 
-- Under the new UI flow, the default question values render `stg-test`, and
-  `prod-test` when the environment is `prod`. A pure Helm install using the
-  chart's `values.yaml` defaults keeps the legacy name `test` unchanged because
-  `cluster.userName` is empty there.
+- The new UI question defaults are configured as `cluster.userName=test` and
+  `cluster.environment=stg`, which would render `stg-test` (`prod-test` with
+  `prod`); these are question defaults, not an observed UI submission. A pure
+  Helm install using the chart's `values.yaml` defaults keeps the legacy name
+  `test` unchanged because `cluster.userName` is empty there.
 - Maximum length is 63 characters: at most 59 for `cluster.userName` under
   `stg` and 58 under `prod`. Nothing is stripped or truncated, and the prefix is
   never de-duplicated (`stg-foo` under `stg` renders `stg-stg-foo`).
@@ -44,11 +45,12 @@ The intended default order and values are:
 2. **Environment** (`cluster.environment`): immediately below Cluster Name,
    enum with `stg` = Staging (default) and `prod` = Production, required.
 
-Both questions are visible in Simple and Advanced mode (no `show_if`). Installed
-Rancher `2.14.3` enum-map support is evidenced, but the full live form is
-**not** tested: the Dev catalog (`fbeb861`) lacks the uncommitted feature and no
-commit/push was authorized, so label, default, ordering, and the new-cluster UI
-path remain pending.
+Both questions are visible in Simple and Advanced mode (no `show_if`). The
+published source `f242633` carries this question metadata, and the production
+Rancher `2.14.1` catalog was read-only verified to serve it (enum-map question
+type supported), but no authenticated browser form submission was exercised:
+label application, default application, ordering, and the new-cluster UI path
+remain unchecked.
 
 ## CLI
 
@@ -102,4 +104,28 @@ Limits: no DNS, issuer, or PVC lifecycle test was run (names and CSI identity
 only), so this is not a rerun of full TLS/storage acceptance. The Rancher UI
 form and published-catalog path remain unverified, so the checklist stays
 unchecked. Non-secret transient evidence was kept under
-`/tmp/opencode/cluster-category/`; no credentials were recorded.
+`/tmp/opencode/cluster-category/`.
+
+## Production Naming Sanity (2026-11-09)
+
+One fresh `SinglePool` cluster (one node with all roles, default
+`v1.35.9+rke2r1`) was created on production Rancher `2.14.1` from published
+source `f242633` with `cluster.userName=category-sanity` and
+`cluster.environment=prod`. It rendered `prod-category-sanity`; the
+`OpenstackConfig` name, cloud-config Secret annotation/references, and Cinder
+CSI `CLUSTER_NAME` all matched. Management readiness took 356 s.
+
+CCM, CSI, and the Traefik Gateway became ready; the Traefik DaemonSet pods
+published host ports `80`/`443` while the Service remained a `ClusterIP`, and
+anonymous HTTP returned `404`. Both StorageClasses matched the contract
+(`cinder-delete` default, `cinder-retain` non-default, WaitForFirstConsumer,
+expansion enabled). No PVC, DNS record, issuer, or TLS material was created,
+and no existing cluster was changed.
+
+Limits: this is naming and baseline sanity, not a fresh Gateway, TLS, Cinder
+lifecycle, HA, or UI acceptance run. One `helm uninstall` at 16:46:51Z and the
+normal Rancher CAPI cascade (complete 16:47:36Z, 45 s total) removed all test
+resources with no manual repair. The production baseline ports, security
+groups/rules, network, subnet, keypair, onboarding Secrets, and environment
+ConfigMap were preserved. Non-secret evidence is under
+`/tmp/opencode/cluster-category-production/`.

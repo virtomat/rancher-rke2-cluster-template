@@ -116,13 +116,14 @@ Historical tested scope note (2026-11-06): the checks below were observed once o
 - [ ] Retain does not rebind automatically; recovering the data requires manual PV/volume handling, and cleanup removes only the recorded test PV/volume under an authorized run
 - [ ] Snapshots and shared RWX access are not part of this initial add-on and are not expected to work
 
-## Cluster Naming Checks (Unreleased, Pending Live UI)
+## Cluster Naming Checks (Published Source, Pending Live UI)
 
-Scope: new clusters only. The environment-prefixed naming feature is an
-unreleased `dev` worktree change, not part of published `1.1.0` source `9fdcace`;
-the live Rancher UI form and published-catalog path are unverified, so keep every
-box below unmarked until observed on a target UI-created cluster. A `prod`
-category cluster created in Dev is a naming test only, not a production test.
+Scope: new clusters only. Environment-prefixed naming is part of the published
+`main` source `f242633` (chart `1.1.0`), and a production CLI naming sanity pass
+completed on Rancher `2.14.1`; no authenticated Rancher UI form submission or
+catalog-driven new-cluster UI path was exercised, so keep every box below
+unmarked until observed on a target UI-created cluster. A `prod` category
+cluster created in Dev is a naming test only, not a production test.
 Full contract and limits: [`docs/cluster-naming.md`](docs/cluster-naming.md).
 
 - [ ] Create-new-cluster form shows **Cluster Name** (`cluster.userName`) with default `test` and required

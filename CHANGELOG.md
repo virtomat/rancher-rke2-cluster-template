@@ -1,4 +1,4 @@
-# Unreleased
+# 1.1.0 source update (2026-11-09)
 
 ## Changes:
 - feat: Add environment-prefixed naming for new clusters. A non-empty `cluster.userName` renders as `<cluster.environment>-<cluster.userName>`, with `stg` (default) or `prod` as the naming-only prefix; the result must stay within 63 characters and is never stripped or truncated.
@@ -6,7 +6,7 @@
 - feat: Preserve legacy direct-Helm compatibility. An empty `cluster.userName` returns `cluster.name` unchanged and ignores the environment prefix; no existing release is renamed or migrated.
 - docs: Add `docs/cluster-naming.md` and refresh README, Rancher UI checklist, root internal guide, and update plan for the naming contract and its pending UI gate.
 - test: Add `tests/validate-cluster-naming.py` (273 checks, 9 renders) and extend the static environment contract check.
-- note: This is an unreleased local `dev` worktree feature. `Chart.yaml` remains `1.1.0`; the published `main`/catalog baseline `9fdcace` does not include it. No commit, push, tag, CI artifact, or publication is implied. Live Rancher UI form, default application, enum-map rendering, question ordering, and the published-catalog new-cluster path remain unverified.
+- note: This is a source update published on `main` at `f242633` (2026-11-09) under chart `1.1.0`; it is not a new chart version, semantic-version tag, CI artifact, or Harbor/OCI release. A production CLI naming sanity pass completed on Rancher `2.14.1`; the live Rancher UI form and catalog-driven new-cluster UI path remain unverified. See [`docs/cluster-naming.md`](docs/cluster-naming.md#production-naming-sanity-2026-11-09).
 
 # 1.1.0 (2026-11-08, published source baseline)
 

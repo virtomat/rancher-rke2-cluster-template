@@ -11,12 +11,12 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 
 ## Current Status
 
-- Phase: `1.1.0` Gateway baseline is published from `main` and default-pin production acceptance is complete; the full patch matrix, Rancher UI path, and whole-node failure paths remain open
+- Phase: `1.1.0` Gateway baseline is published from `main` and default-pin production acceptance is complete; environment-prefixed naming is in the published source with production CLI sanity passed; the full patch matrix, Rancher UI path, and whole-node failure paths remain open
 - Current baseline: chart `1.1.0` with RKE2 `v1.33.13+rke2r2`, `v1.34.12+rke2r1`, and `v1.35.9+rke2r1` (default)
 - Current validation target: production Rancher `2.14.1` accepted the default `v1.35.9+rke2r1` for single-node and 3CP+2W HA; `v1.33.13+rke2r2` and `v1.34.12+rke2r1` remain offline-render-only
-- Branch split status: `dev` equals `main` at `9fdcace`; no existing cluster upgrade or migration is part of this baseline
-- Release status: `1.1.0` is a published git-backed Rancher catalog source baseline; no CI artifact, semantic-version tag, or Harbor/OCI release exists for this repository
-- Unreleased feature: environment-prefixed cluster naming (`<environment>-<userName>`) exists only as local `dev` worktree changes above published `9fdcace`; `Chart.yaml` stays `1.1.0`, and the live Rancher UI/published-catalog path is not verified
+- Branch split status: `dev` equals `main` at `f242633`; no existing cluster upgrade or migration is part of this baseline
+- Release status: `1.1.0` is a published git-backed Rancher catalog source baseline, refreshed to `f242633` on 2026-11-09 without a new chart version, tag, CI artifact, or Harbor/OCI release
+- Published naming feature: environment-prefixed cluster naming (`<environment>-<userName>`) is in `main` source `f242633` at chart `1.1.0`; production CLI sanity passed, while the live Rancher UI form and catalog-driven new-cluster path remain unverified
 
 ## Progress
 
@@ -28,7 +28,7 @@ Goal: improve chart consistency, maintainability, and documentation while preser
 - [ ] Validate generic cleanup in Dev
 - [x] Run default-pin Gateway/TLS live acceptance for single-node and 3CP+2W HA with qualified availability
 - [x] Run default-pin production acceptance on Rancher `2.14.1` for single-node and 3CP+2W HA
-- [ ] Verify the unreleased environment-prefixed naming in the live Rancher UI form and published catalog (label, default, ordering, and new-cluster UI path); checklist boxes stay unchecked until observed
+- [ ] Verify the published environment-prefixed naming in the live Rancher UI form (the published catalog now serves the question metadata; an authenticated form submission remains unobserved)
 - [ ] Run live coverage for the remaining `v1.33.13+rke2r2` and `v1.34.12+rke2r1` pins
 - [x] Merge shared cleanup baseline into `main`
 - [ ] Start Prod-specific adaptation on `main`
@@ -392,11 +392,11 @@ helm upgrade --install dev-rke2-single . \
 - Gateway CRDs: must exist before cert-manager starts. The packaged Traefik CRD bundle supplies them for new clusters. RKE2 installs the packaged Traefik main and CRD HelmCharts asynchronously with no explicit dependency; the initial Traefik Helm job may retry until the Gateway API CRDs are established. Persistent failure requires HelmChart/job/event inspection, not automatic deletes/restarts/uninstalls/custom repair or a cert-manager restart.
 - Verification: independent offline verification completed on 2026-11-06 (Gateway 399 checks, CSI 1379 checks, static shell PASS). These are local render/static results only; live routing, HTTPS/ACME issuance, fresh-bootstrap CRD convergence, and new-patch CSI acceptance remain live gates. Existing Cinder live acceptance remains historical and used `v1.35.6+rke2r1`.
 
-## Environment-Prefixed Cluster Naming (Unreleased, New Clusters)
+## Environment-Prefixed Cluster Naming (Published, New Clusters)
 
-- Status: unreleased local `dev` worktree feature. `Chart.yaml` stays `1.1.0`;
-  the published `main`/catalog source `9fdcace` does not include it, and no
-  commit, push, tag, CI artifact, or publication is implied.
+- Status: published in `main`/production catalog source `f242633` (2026-11-09)
+  at chart `1.1.0`; the source refresh created no new chart version, tag, CI
+  artifact, or Harbor/OCI release.
 - Contract: a non-empty `cluster.userName` renders
   `<cluster.environment>-<cluster.userName>`. `cluster.environment` is `stg`
   (default) or `prod`; `cluster.userName` is a lower-case DNS label. The full
@@ -413,12 +413,13 @@ helm upgrade --install dev-rke2-single . \
   cloud-config Secret name/annotation/reference, ManagedChart names/targets,
   ClusterRoleTemplateBinding hash/namespace, and Cinder CSI `CLUSTER_NAME`.
   Physical node names still add random suffixes.
-- UI gate: Rancher `2.14.3` enum-type map support is evidenced, but the full
-  live form is unverified. Label, default application, question ordering, and
-  the new-cluster UI path stay pending because the published Dev catalog does
-  not contain the uncommitted feature.
+- UI gate: the published catalog serves the question metadata, but no
+  authenticated UI form submission was exercised, so label application,
+  default application, question ordering, and the catalog-driven new-cluster UI
+  path remain unchecked.
 - See [`docs/cluster-naming.md`](docs/cluster-naming.md) for the full contract,
-  CLI examples, and the 2026-11-09 Dev acceptance summary and limits.
+  CLI examples, the 2026-11-09 Dev acceptance summary, and the production naming
+  sanity section.
 
 ## Planned Phases
 
@@ -545,14 +546,16 @@ helm upgrade --install dev-rke2-single . \
 - Scope limits: no `v1.33`/`v1.34` live run, no Rancher UI RBAC or password login, no existing-cluster upgrade/migration, no natural or production renewal, no snapshot/RWX, no custom volume type or AZ variation, and no whole-node, control-plane, network, amphora-failure, or zero-downtime test.
 - Details and limits: [`docs/production-live-acceptance.md`](docs/production-live-acceptance.md).
 
-#### Environment-Prefixed Cluster Naming (Unreleased, Run 2026-11-09)
+#### Environment-Prefixed Cluster Naming (HISTORICAL — before main publication, Run 2026-11-09)
 
 - Implemented `cluster.userName` plus `cluster.environment` (`stg` default,
   `prod`) with a single `rancher-cluster-templates.clusterName` helper and
   switched every name-derived resource to it. Legacy `cluster.name` is retained
-  as an unchanged fallback only when `cluster.userName` is empty. `Chart.yaml`
-  stays `1.1.0`; this is uncommitted `dev` worktree work above published
-  `9fdcace`, with no commit, push, tag, artifact, or catalog publication.
+  as an unchanged fallback only when `cluster.userName` is empty. At this stage
+  the work was local/uncommitted `dev` worktree work above published `9fdcace`,
+  with no commit, push, tag, artifact, or catalog publication; superseded by the
+  [Naming Source Publication And Production Sanity (2026-11-09)](#naming-source-publication-and-production-sanity-2026-11-09)
+  entry below.
 - Independent offline verification passed: `python3 tests/validate-cluster-naming.py`
   (273 checks, 9 renders), `python3 tests/validate-cinder-csi.py` (1379 checks),
   `python3 tests/validate-gateway.py` (399 checks), `bash tests/validate-openstack-environment.sh`,
@@ -574,6 +577,28 @@ helm upgrade --install dev-rke2-single . \
   production catalog, `main`, DNS, issuer, or PVC lifecycle was changed/tested.
 - Remaining gate: live Rancher UI form verification (Cluster Name default,
   Environment immediately below with Staging/Production labels, Simple/Advanced
-  visibility) and the published-catalog new-cluster path. The full live form was
-  not tested because the currently published Dev catalog does not include the
-  uncommitted feature, so the checklist boxes stay unchecked.
+  visibility) and the published-catalog new-cluster path. No authenticated UI
+  form submission was exercised, so the checklist boxes stay unchecked.
+
+#### Naming Source Publication And Production Sanity (2026-11-09)
+
+- Fast-forwarded `main` from `9fdcace` to `f242633` (push at 16:26:28Z) so the
+  published source carries environment-prefixed naming at chart `1.1.0`; `main`
+  equals `dev`. The git-backed production catalog was refreshed with one guarded
+  `spec.forceUpdate` (generation 3 -> 4) and downloaded `f242633`. This
+  repository still has no CI pipeline, tag, or Harbor/OCI release.
+- A production `SinglePool` naming sanity run on Rancher `2.14.1` created
+  `prod-category-sanity` from `cluster.userName=category-sanity` plus
+  `cluster.environment=prod`. The `OpenstackConfig` name, cloud-config
+  annotation/references, and CSI `CLUSTER_NAME` matched the resolved name; CCM,
+  CSI, and Traefik became ready, public HTTP returned `404`, and both
+  StorageClasses matched the contract. No PVC, DNS record, TLS material,
+  issuer, or existing cluster was created or changed.
+- Independent verification passed 36 checks. One `helm uninstall` and the normal
+  Rancher CAPI cascade (45 s total) removed all test resources with no manual
+  repair; independent cleanup verification passed 38 checks and confirmed the
+  production baseline ports, security groups/rules, network, subnet, keypair,
+  onboarding Secrets, and environment ConfigMap were preserved.
+- Still open: the live Rancher UI form and catalog-driven new-cluster UI path
+  stay unchecked. This run is naming and baseline sanity only, not fresh
+  Gateway, TLS, Cinder lifecycle, HA, or UI acceptance.
